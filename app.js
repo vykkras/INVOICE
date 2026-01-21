@@ -23,6 +23,8 @@ let suppressClick = false;
 let dragState = null;
 let deleteHistory = JSON.parse(localStorage.getItem('invoiceDeleteHistory') || '[]');
 let currentInvoiceNumber = null;
+let moveDialogInvoiceNumber = null;
+let moveDialogFolderId = null;
 let supabaseClient = null;
 let supabaseSyncTimer = null;
 
@@ -781,6 +783,14 @@ function renderSavedView() {
             toggleInvoicePaid(invoice.invoiceNumber);
         };
 
+        const moveBtn = document.createElement('button');
+        moveBtn.className = 'menu';
+        moveBtn.textContent = '⋯';
+        moveBtn.onclick = event => {
+            event.stopPropagation();
+            openMoveDialog(invoice.invoiceNumber);
+        };
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'danger';
         deleteBtn.textContent = 'Delete';
@@ -790,6 +800,7 @@ function renderSavedView() {
         };
 
         actions.appendChild(duplicateBtn);
+        actions.appendChild(moveBtn);
         actions.appendChild(paidBtn);
         actions.appendChild(deleteBtn);
 
@@ -864,9 +875,11 @@ function showUndoBar(snapshot) {
         return;
     }
     if (snapshot.type === 'invoice') {
-        message.textContent = 'Invoice deleted.';
+        const label = snapshot.label || 'Invoice';
+        message.textContent = `${label} deleted. Undo will restore it.`;
     } else {
-        message.textContent = 'Folder deleted.';
+        const label = snapshot.label || 'Folder';
+        message.textContent = `${label} deleted. Undo will restore it and its contents.`;
     }
 }
 
@@ -989,6 +1002,7 @@ function deleteInvoice(invoiceNumber) {
     }
     setUndoSnapshot({
         type: 'invoice',
+        label: `Invoice #${invoiceNumber}`,
         invoices: [invoice],
         folders: []
     });
@@ -1025,6 +1039,113 @@ function toggleInvoicePaid(invoiceNumber) {
     }
 }
 
+function openMoveDialog(invoiceNumber) {
+    moveDialogInvoiceNumber = invoiceNumber;
+    const invoice = savedInvoices.find(inv => inv.invoiceNumber === invoiceNumber);
+    moveDialogFolderId = invoice ? String(invoice.folderId || '') || null : null;
+    renderMoveDialog();
+    const dialog = document.getElementById('moveDialog');
+    if (dialog) {
+        dialog.classList.add('open');
+    }
+}
+
+function closeMoveDialog() {
+    const dialog = document.getElementById('moveDialog');
+    if (dialog) {
+        dialog.classList.remove('open');
+    }
+    moveDialogInvoiceNumber = null;
+    moveDialogFolderId = null;
+}
+
+function renderMoveDialog() {
+    renderMoveBreadcrumbs();
+    renderMoveFolderList();
+}
+
+function renderMoveBreadcrumbs() {
+    const breadcrumbs = document.getElementById('moveBreadcrumbs');
+    if (!breadcrumbs) {
+        return;
+    }
+    breadcrumbs.innerHTML = '';
+    const rootBtn = document.createElement('button');
+    rootBtn.textContent = 'Saved Invoices';
+    rootBtn.onclick = () => {
+        moveDialogFolderId = null;
+        renderMoveDialog();
+    };
+    breadcrumbs.appendChild(rootBtn);
+
+    const path = getFolderPath(moveDialogFolderId);
+    path.forEach(folder => {
+        const sep = document.createElement('span');
+        sep.textContent = ' / ';
+        breadcrumbs.appendChild(sep);
+        const crumb = document.createElement('button');
+        crumb.textContent = folder.name;
+        crumb.onclick = () => {
+            moveDialogFolderId = folder.id;
+            renderMoveDialog();
+        };
+        breadcrumbs.appendChild(crumb);
+    });
+}
+
+function renderMoveFolderList() {
+    const list = document.getElementById('moveFolderList');
+    if (!list) {
+        return;
+    }
+    list.innerHTML = '';
+
+    const foldersHere = savedFolders.filter(folder => String(folder.parentId || '') === String(moveDialogFolderId || ''));
+    if (!foldersHere.length) {
+        const empty = document.createElement('div');
+        empty.className = 'invoice-empty';
+        empty.textContent = 'No folders here.';
+        list.appendChild(empty);
+        return;
+    }
+
+    foldersHere.forEach(folder => {
+        const item = document.createElement('div');
+        item.className = 'move-dialog-item';
+
+        const label = document.createElement('span');
+        label.textContent = folder.name;
+
+        const actions = document.createElement('div');
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.textContent = 'Open';
+        openBtn.onclick = event => {
+            event.stopPropagation();
+            moveDialogFolderId = folder.id;
+            renderMoveDialog();
+        };
+
+        const moveBtn = document.createElement('button');
+        moveBtn.type = 'button';
+        moveBtn.textContent = 'Move';
+        moveBtn.onclick = event => {
+            event.stopPropagation();
+            if (moveDialogInvoiceNumber) {
+                moveInvoice(moveDialogInvoiceNumber, folder.id);
+                closeMoveDialog();
+            }
+        };
+
+        actions.appendChild(openBtn);
+        actions.appendChild(moveBtn);
+
+        item.appendChild(label);
+        item.appendChild(actions);
+        list.appendChild(item);
+    });
+}
+
 function deleteFolder(folderId) {
     const folder = getFolderById(folderId);
     if (!folder) {
@@ -1036,6 +1157,7 @@ function deleteFolder(folderId) {
     const deletedInvoices = savedInvoices.filter(inv => folderIdSet.has(String(inv.folderId)));
     setUndoSnapshot({
         type: 'folder',
+        label: folder.name || 'Folder',
         folders: deletedFolders,
         invoices: deletedInvoices
     });
