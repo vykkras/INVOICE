@@ -238,7 +238,7 @@ function getMetaFieldsFromDOM() {
     return Array.from(rows).map(row => {
         const key = row.dataset.key || '';
         const label = row.querySelector('.meta-label-input')?.value || '';
-        const input = row.querySelector('input');
+        const input = row.querySelector('.meta-value');
         return {
             key,
             label,
@@ -742,7 +742,9 @@ function renderSavedView() {
 
         const title = document.createElement('div');
         title.className = 'saved-item-title';
-        title.textContent = `Invoice #${invoice.invoiceNumber}`;
+        const projectName = invoice.project || 'No project';
+        const invoiceNumber = invoice.invoiceNumber || '';
+        title.textContent = `Project: ${projectName} -- Invoice #: ${invoiceNumber}`;
 
         const meta = document.createElement('div');
         meta.className = 'saved-item-meta';
