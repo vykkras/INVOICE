@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Manager - DC Cable</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo">
+                    <span class="dc">DC</span><br>
+                    <span class="cable">CABLE</span><br>
+                    <div class="contractor-text">AUTHORIZED CONTRACTOR</div>
+                </div>
+            </div>
+            <div class="action-buttons invoice-actions">
+                <button class="btn btn-home" onclick="goHome()">🏠 Home</button>
+                <button class="btn btn-folder" type="button" onclick="goBackToFolder()">⬅ Back</button>
+                <button class="btn btn-new" onclick="createNewInvoice()">+ New Invoice</button>
+                <button class="btn btn-save" onclick="saveInvoice()">💾 Save</button>
+                <button class="btn btn-print" id="printBtnFresh" type="button" onclick="printInvoice()">🖨️ Print</button>
+            </div>
+        </div>
+        <div class="invoice-banner"></div>
+
+        <div class="home-content" id="homeView">
+            <div class="home-hero">
+                <h1>Invoice Manager</h1>
+                <p>Create new invoices or jump back into saved work.</p>
+            </div>
+            <div class="home-actions">
+                <button class="btn btn-new" onclick="startNewInvoiceFromHome()">+ New Invoice</button>
+                <button class="btn btn-save" onclick="openSavedInvoicesView()">Saved Invoices</button>
+            </div>
+        </div>
+
+        <div class="saved-view" id="savedView">
+            <div class="saved-toolbar">
+                <div class="saved-breadcrumbs" id="savedBreadcrumbs"></div>
+                <div class="saved-actions">
+                    <button class="btn btn-new" type="button" onclick="startNewInvoiceInSavedFolder()">+ New Invoice</button>
+                    <button class="btn btn-folder" type="button" onclick="openFolderCreator()">+ New Folder</button>
+                    <button class="btn btn-home" type="button" onclick="goHome()">🏠 Home</button>
+                </div>
+            </div>
+            <div class="folder-create" id="folderCreate">
+                <input type="text" id="folderNameInput" placeholder="Folder name">
+                <button type="button" onclick="submitFolderCreate()">Create</button>
+                <button type="button" class="secondary" onclick="cancelFolderCreate()">Cancel</button>
+            </div>
+            <div class="undo-bar" id="undoBar">
+                <span id="undoMessage">No deletions to undo.</span>
+                <button type="button" onclick="undoDelete()">Undo</button>
+            </div>
+            <div class="saved-list" id="savedList"></div>
+        </div>
+
+        <div class="invoice-content" id="editorView">
+            <!-- Invoice Header -->
+            <div class="invoice-header-section">
+                <div class="invoice-left">
+                    <div class="invoice-title">INVOICE</div>
+                    <!-- Billing Section -->
+                    <div class="billing-section">
+                        <div class="bill-to">
+                            <div class="section-title">From</div>
+                            <div class="form-group">
+                                <input type="text" id="fromCompany" placeholder="Cable Services Pro">
+                            </div>
+                        </div>
+                        <div class="bill-to">
+                            <div class="section-title">Bill To</div>
+                            <div class="form-group">
+                                <input type="text" id="billToCompany" placeholder="Company Name (e.g., BPS)">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="billToAddress" placeholder="Address (optional)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="invoice-meta">
+                    <div class="meta-fields" id="metaFields"></div>
+                    <button class="btn btn-add-meta" type="button" onclick="addMetaField()">+ Add Field</button>
+                    <div class="balance-due">
+                        <span>Balance Due:</span>
+                        <span id="balanceDue">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Section -->
+            <div class="items-section">
+                <table class="items-table" id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 45%">Item</th>
+                            <th style="width: 15%">Quantity</th>
+                            <th style="width: 15%">Rate</th>
+                            <th style="width: 20%">Amount</th>
+                            <th style="width: 5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        <!-- Items will be added here -->
+                    </tbody>
+                </table>
+                <button class="btn-add-item" onclick="addItem()">+ Add Item</button>
+            </div>
+
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <div class="totals-table">
+                    <div class="totals-row">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">$0.00</span>
+                    </div>
+                    <div class="totals-row">
+                        <span>Tax (0%):</span>
+                        <span id="tax">$0.00</span>
+                    </div>
+                    <div class="totals-row grand-total">
+                        <span>TOTAL:</span>
+                        <span id="total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
