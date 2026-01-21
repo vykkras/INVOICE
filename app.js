@@ -22,17 +22,26 @@ let lastOpenedFolderId = null;
 let suppressClick = false;
 let dragState = null;
 let deleteHistory = JSON.parse(localStorage.getItem('invoiceDeleteHistory') || '[]');
+let supabaseClient = null;
+let supabaseSyncTimer = null;
+
+const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
+const WORKSPACE_ID = 'default';
 
 function saveFolders() {
     localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
+    scheduleSupabaseSync();
 }
 
 function saveInvoices() {
     localStorage.setItem('invoices', JSON.stringify(savedInvoices));
+    scheduleSupabaseSync();
 }
 
 function saveDeleteHistory() {
     localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
+    scheduleSupabaseSync();
 }
 function createFolderData(name) {
     return {
@@ -781,7 +790,10 @@ function navigateFolder(folderId) {
 function openSavedInvoicesView() {
     currentSavedFolderId = null;
     showSavedView();
-    renderSavedView();
+    loadStateFromSupabase().then(() => {
+        normalizeInvoiceFolders();
+        renderSavedView();
+    });
 }
 
 function goBackToFolder() {
@@ -878,6 +890,77 @@ function updateUndoBar() {
     button.disabled = false;
     const last = deleteHistory[deleteHistory.length - 1];
     showUndoBar(last);
+}
+
+function initSupabase() {
+    if (!window.supabase) {
+        return;
+    }
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function getStateSnapshot() {
+    return {
+        invoices: savedInvoices,
+        folders: savedFolders,
+        deleteHistory: deleteHistory
+    };
+}
+
+function scheduleSupabaseSync() {
+    if (!supabaseClient) {
+        return;
+    }
+    if (supabaseSyncTimer) {
+        clearTimeout(supabaseSyncTimer);
+    }
+    supabaseSyncTimer = setTimeout(() => {
+        persistStateToSupabase();
+    }, 400);
+}
+
+async function persistStateToSupabase() {
+    if (!supabaseClient) {
+        return;
+    }
+    const state = getStateSnapshot();
+    try {
+        await supabaseClient
+            .from('invoice_state')
+            .upsert(
+                {
+                    workspace_id: WORKSPACE_ID,
+                    state: state,
+                    updated_at: new Date().toISOString()
+                },
+                { onConflict: 'workspace_id' }
+            );
+    } catch (error) {
+        // Keep localStorage as fallback if remote save fails.
+    }
+}
+
+async function loadStateFromSupabase() {
+    if (!supabaseClient) {
+        return;
+    }
+    try {
+        const { data } = await supabaseClient
+            .from('invoice_state')
+            .select('state')
+            .eq('workspace_id', WORKSPACE_ID)
+            .single();
+        if (data && data.state) {
+            savedInvoices = data.state.invoices || [];
+            savedFolders = data.state.folders || [];
+            deleteHistory = data.state.deleteHistory || [];
+            localStorage.setItem('invoices', JSON.stringify(savedInvoices));
+            localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
+            localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
+        }
+    } catch (error) {
+        // Ignore fetch errors; localStorage remains the source.
+    }
 }
 
 function deleteInvoice(invoiceNumber) {
@@ -1061,6 +1144,9 @@ function startManualDrag(element, type, id, startEvent) {
     document.addEventListener('mouseup', onUp);
 }
 
-normalizeInvoiceFolders();
-renderSavedView();
+initSupabase();
+loadStateFromSupabase().then(() => {
+    normalizeInvoiceFolders();
+    renderSavedView();
+});
 showHome();
