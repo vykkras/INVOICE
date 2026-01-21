@@ -700,6 +700,14 @@ function renderSavedView() {
         const actions = document.createElement('div');
         actions.className = 'saved-item-actions';
 
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'menu';
+        renameBtn.textContent = 'Rename';
+        renameBtn.onclick = event => {
+            event.stopPropagation();
+            renameFolder(folder.id);
+        };
+
         const duplicateBtn = document.createElement('button');
         duplicateBtn.textContent = 'Duplicate';
         duplicateBtn.onclick = event => {
@@ -715,6 +723,7 @@ function renderSavedView() {
             deleteFolder(folder.id);
         };
 
+        actions.appendChild(renameBtn);
         actions.appendChild(duplicateBtn);
         actions.appendChild(deleteBtn);
 
@@ -1210,6 +1219,24 @@ function duplicateFolder(folderId) {
 
     saveFolders();
     saveInvoices();
+    renderSavedView();
+}
+
+function renameFolder(folderId) {
+    const folder = getFolderById(folderId);
+    if (!folder) {
+        return;
+    }
+    const name = prompt('New folder name', folder.name || '');
+    if (!name) {
+        return;
+    }
+    const trimmed = name.trim();
+    if (!trimmed) {
+        return;
+    }
+    folder.name = trimmed;
+    saveFolders();
     renderSavedView();
 }
 
