@@ -744,6 +744,7 @@ select:focus {
 
 .totals-table {
     width: 300px;
+    margin-left: auto;
 }
 
 .totals-row {
@@ -888,11 +889,13 @@ select:focus {
     .invoice-meta {
         grid-column: 2;
         align-items: stretch;
-        margin-top: 28px;
+        margin-top: 64px !important;
+        padding-top: 55px;
         justify-self: end;
         width: 100%;
         background: transparent;
         padding: 0;
+        transform: translateY(43px);
     }
 
     .meta-row input,
@@ -966,6 +969,14 @@ select:focus {
     .items-table th:last-child,
     .items-table td:last-child {
         display: none;
+    }
+
+    .totals-section {
+        justify-content: flex-end;
+    }
+
+    .totals-table {
+        margin-left: auto;
     }
 
     .item-input {

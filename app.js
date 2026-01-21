@@ -296,11 +296,9 @@ function calculateTotals() {
         subtotal += amount;
     });
 
-    const tax = 0; // Can be modified for tax calculation
-    const total = subtotal + tax;
+    const total = subtotal;
 
     document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
-    document.getElementById('tax').textContent = '$' + tax.toFixed(2);
     document.getElementById('total').textContent = '$' + total.toFixed(2);
     document.getElementById('balanceDue').textContent = '$' + total.toFixed(2);
 }
