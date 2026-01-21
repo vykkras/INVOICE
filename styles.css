@@ -879,3 +879,105 @@ select:focus {
     text-align: right;
     font-weight: 500;
 }
+
+@media (max-width: 900px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .action-buttons {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .invoice-header-section {
+        grid-template-columns: 1fr;
+        row-gap: 16px;
+    }
+
+    .invoice-meta {
+        margin-top: 0;
+    }
+
+    .invoice-title {
+        font-size: 32px;
+    }
+
+    .billing-section {
+        max-width: none;
+    }
+
+    .items-section {
+        overflow-x: auto;
+    }
+
+    .items-table {
+        min-width: 640px;
+    }
+
+    .totals-section {
+        justify-content: flex-start;
+    }
+
+    .totals-table {
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .saved-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .saved-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .invoice-content,
+    .home-content,
+    .saved-view {
+        padding: 20px;
+    }
+
+    .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .logo {
+        font-size: 18px;
+        padding: 6px 12px;
+    }
+
+    .invoice-title {
+        font-size: 28px;
+    }
+
+    .bill-to {
+        padding: 12px;
+    }
+
+    .meta-value,
+    input[type="text"],
+    input[type="date"],
+    input[type="number"] {
+        font-size: 12px;
+    }
+
+    .saved-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .saved-item-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+}
