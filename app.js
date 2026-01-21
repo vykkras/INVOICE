@@ -22,6 +22,7 @@ let lastOpenedFolderId = null;
 let suppressClick = false;
 let dragState = null;
 let deleteHistory = JSON.parse(localStorage.getItem('invoiceDeleteHistory') || '[]');
+let currentInvoiceNumber = null;
 let supabaseClient = null;
 let supabaseSyncTimer = null;
 
@@ -326,7 +327,8 @@ function collectInvoiceData() {
         billTo: document.getElementById('billToCompany').value,
         billToAddress: document.getElementById('billToAddress').value,
         items: items,
-        metaFields: metaFields
+        metaFields: metaFields,
+        paid: savedInvoices.find(inv => inv.invoiceNumber === byKey('invoiceNumber'))?.paid || false
     };
 }
 
@@ -353,6 +355,7 @@ function saveInvoice() {
 function loadInvoice(data) {
     lastOpenedFolderId = data.folderId ? String(data.folderId) : null;
     currentFolderId = data.folderId || ensureDefaultFolder();
+    currentInvoiceNumber = data.invoiceNumber || null;
     const fields = data.metaFields && data.metaFields.length
         ? data.metaFields
         : getDefaultMetaFields().map(field => ({
@@ -383,6 +386,7 @@ function createNewInvoice() {
     if (confirm('Create a new invoice? Any unsaved changes will be lost.')) {
         // Generate new invoice number
         const newNumber = (parseInt(getMetaFieldsFromDOM().find(field => field.key === 'invoiceNumber')?.value || '0', 10) + 1).toString().padStart(4, '0');
+        currentInvoiceNumber = newNumber;
         
         currentFolderId = currentFolderId || ensureDefaultFolder();
         const fields = getDefaultMetaFields().map(field => ({
@@ -482,9 +486,11 @@ ${containerHtml}
     setTimeout(() => iframe.remove(), 500);
 }
 
+
 function startNewInvoiceFromHome() {
     // Create a fresh invoice without a confirm dialog from the home view.
     const newNumber = (parseInt(getMetaFieldsFromDOM().find(field => field.key === 'invoiceNumber')?.value || '0', 10) + 1).toString().padStart(4, '0');
+    currentInvoiceNumber = newNumber;
     currentFolderId = ensureDefaultFolder();
     const fields = getDefaultMetaFields().map(field => ({
         ...field,
@@ -508,6 +514,7 @@ function startNewInvoiceInSavedFolder() {
     currentFolderId = targetFolderId;
     lastOpenedFolderId = targetFolderId;
     const newNumber = (parseInt(getMetaFieldsFromDOM().find(field => field.key === 'invoiceNumber')?.value || '0', 10) + 1).toString().padStart(4, '0');
+    currentInvoiceNumber = newNumber;
     const fields = getDefaultMetaFields().map(field => ({
         ...field,
         value: field.key === 'invoiceNumber'
@@ -719,7 +726,9 @@ function renderSavedView() {
 
     invoicesHere.forEach(invoice => {
         const item = document.createElement('div');
-        item.className = 'saved-item';
+        item.className = `saved-item ${invoice.paid ? 'paid' : 'unpaid'}`;
+        item.style.backgroundColor = invoice.paid ? '#cfe8d2' : '#fff7f5';
+        item.style.borderColor = invoice.paid ? '#5aa86a' : '#f4e1dd';
         item.dataset.invoiceNumber = invoice.invoiceNumber;
         item.onclick = () => {
             if (suppressClick) {
@@ -765,6 +774,13 @@ function renderSavedView() {
             duplicateInvoice(invoice.invoiceNumber);
         };
 
+        const paidBtn = document.createElement('button');
+        paidBtn.textContent = invoice.paid ? 'Paid' : 'Unpaid';
+        paidBtn.onclick = event => {
+            event.stopPropagation();
+            toggleInvoicePaid(invoice.invoiceNumber);
+        };
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'danger';
         deleteBtn.textContent = 'Delete';
@@ -774,6 +790,7 @@ function renderSavedView() {
         };
 
         actions.appendChild(duplicateBtn);
+        actions.appendChild(paidBtn);
         actions.appendChild(deleteBtn);
 
         item.appendChild(title);
@@ -989,6 +1006,23 @@ function duplicateInvoice(invoiceNumber) {
     savedInvoices.push(copy);
     saveInvoices();
     renderSavedView();
+}
+
+function toggleInvoicePaid(invoiceNumber) {
+    const invoice = savedInvoices.find(inv => inv.invoiceNumber === invoiceNumber);
+    if (!invoice) {
+        return;
+    }
+    invoice.paid = !invoice.paid;
+    saveInvoices();
+    renderSavedView();
+    if (currentInvoiceNumber && currentInvoiceNumber === invoiceNumber) {
+        const banner = document.getElementById('paidBanner');
+        if (banner) {
+            banner.classList.toggle('paid', invoice.paid);
+            banner.textContent = invoice.paid ? 'Paid' : 'Unpaid';
+        }
+    }
 }
 
 function deleteFolder(folderId) {

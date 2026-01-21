@@ -58,9 +58,19 @@ body {
 }
 
 .invoice-banner {
-    height: 12px;
+    height: 32px;
     background: #FF6B35;
     width: 100%;
+    border: none;
+    color: white;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.invoice-banner.paid {
+    background: #2e7d32;
 }
 
 .action-buttons {
@@ -272,6 +282,16 @@ body {
     cursor: grab;
     transition: all 0.2s ease;
     background: #fff;
+}
+
+.saved-item.paid {
+    border-color: #cfe9d3 !important;
+    background: #f4fbf5 !important;
+}
+
+.saved-item.unpaid {
+    border-color: #f4e1dd !important;
+    background: #fff7f5 !important;
 }
 
 .saved-item-actions {
