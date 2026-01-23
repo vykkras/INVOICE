@@ -654,6 +654,13 @@ select:focus {
     margin-bottom: 30px;
 }
 
+.items-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 12px;
+}
+
 .items-table {
     width: 100%;
     border-collapse: collapse;
@@ -677,9 +684,9 @@ select:focus {
     text-align: right;
 }
 
-.items-table tbody tr {
-    border-bottom: 1px solid #e0e0e0;
-}
+    .items-table tbody tr {
+        border-bottom: none;
+    }
 
 .items-table tbody tr:hover {
     background: #f9f9f9;
@@ -720,6 +727,21 @@ select:focus {
 
 .btn-add-item:hover {
     background: #E85A2A;
+}
+
+.btn-clear-items {
+    background: #f2f2f2;
+    color: #333;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.btn-clear-items:hover {
+    background: #e6e6e6;
 }
 
 .btn-remove {
@@ -784,6 +806,7 @@ select:focus {
     .saved-view,
     .btn-remove,
     .btn-add-item,
+    .btn-clear-items,
     .btn-add-meta,
     .btn-delete-meta {
         display: none !important;
@@ -1104,5 +1127,10 @@ select:focus {
         width: 100%;
         justify-content: flex-start;
         flex-wrap: wrap;
+    }
+
+    .items-actions {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

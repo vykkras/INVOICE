@@ -191,6 +191,21 @@ function addItem(itemData = null) {
     calculateTotals();
 }
 
+function clearItemData() {
+    const rows = document.querySelectorAll('#itemsBody tr');
+    rows.forEach(row => {
+        const qtyInput = row.cells[1].querySelector('input');
+        if (qtyInput) {
+            qtyInput.value = '';
+        }
+        const amount = row.querySelector('.amount');
+        if (amount) {
+            amount.textContent = '0.00';
+        }
+    });
+    calculateTotals();
+}
+
 function getDefaultMetaFields() {
     return [
         { key: 'invoiceNumber', label: '#', type: 'text', value: '0454', required: true },
@@ -426,17 +441,7 @@ function createNewInvoice() {
     }
 }
 
-function printInvoice() {
-    // Firefox can block window.open; print via a hidden iframe without injected scripts.
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.setAttribute('aria-hidden', 'true');
-
+function collectPrintCss() {
     let cssText = '';
     Array.from(document.styleSheets).forEach(sheet => {
         try {
@@ -451,6 +456,10 @@ function printInvoice() {
             // Ignore stylesheets we can't read.
         }
     });
+    return cssText;
+}
+
+function cloneContainerForPrint() {
     const container = document.querySelector('.container');
     let containerHtml = '';
     if (container) {
@@ -474,18 +483,128 @@ function printInvoice() {
         });
         containerHtml = cloned.outerHTML;
     }
+    return containerHtml;
+}
+
+function renderPrintHtml(containerHtml, title = 'Invoice') {
+    const cssText = collectPrintCss();
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice</title>
+    <title>${title}</title>
     <style>${cssText}</style>
 </head>
 <body>
 ${containerHtml}
 </body>
 </html>`;
+    return html;
+}
 
+function printInvoice() {
+    // Firefox can block window.open; print via a hidden iframe without injected scripts.
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+
+    const containerHtml = cloneContainerForPrint();
+    const html = renderPrintHtml(containerHtml, 'Invoice');
+
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    if (!win) {
+        window.print();
+        iframe.remove();
+        return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+    setTimeout(() => iframe.remove(), 500);
+}
+
+function printFolderInvoices() {
+    const folderId = currentSavedFolderId ? String(currentSavedFolderId) : null;
+    const invoicesHere = savedInvoices.filter(inv => String(inv.folderId || '') === String(folderId || ''));
+    if (!invoicesHere.length) {
+        alert('No invoices in this folder to print.');
+        return;
+    }
+
+    const homeView = document.getElementById('homeView');
+    const editorView = document.getElementById('editorView');
+    const savedView = document.getElementById('savedView');
+    const actions = document.querySelector('.invoice-actions');
+    const previousState = {
+        home: homeView ? homeView.style.display : '',
+        editor: editorView ? editorView.style.display : '',
+        saved: savedView ? savedView.style.display : '',
+        actions: actions ? actions.style.display : ''
+    };
+    const previousInvoice = collectInvoiceData();
+    const previousInvoiceNumber = currentInvoiceNumber;
+    const previousFolderId = currentFolderId;
+    const previousLastOpened = lastOpenedFolderId;
+
+    showEditor();
+
+    const containers = invoicesHere.map(invoice => {
+        loadInvoice(invoice);
+        return cloneContainerForPrint();
+    });
+
+    if (previousInvoiceNumber) {
+        loadInvoice(previousInvoice);
+    }
+    currentInvoiceNumber = previousInvoiceNumber;
+    currentFolderId = previousFolderId;
+    lastOpenedFolderId = previousLastOpened;
+
+    if (previousState.home === 'block') {
+        showHome();
+    } else if (previousState.saved === 'block') {
+        showSavedView();
+        renderSavedView();
+    } else {
+        showEditor();
+    }
+
+    if (homeView) {
+        homeView.style.display = previousState.home;
+    }
+    if (editorView) {
+        editorView.style.display = previousState.editor;
+    }
+    if (savedView) {
+        savedView.style.display = previousState.saved;
+    }
+    if (actions) {
+        actions.style.display = previousState.actions;
+    }
+
+    const combinedHtml = containers
+        .map((html, index) => index === 0 ? html : `<div style="page-break-before: always;"></div>${html}`)
+        .join('');
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+
+    const title = folderId ? 'Folder Invoices' : 'Saved Invoices';
+    const html = renderPrintHtml(combinedHtml, title);
     document.body.appendChild(iframe);
     const win = iframe.contentWindow;
     if (!win) {
@@ -1045,7 +1164,29 @@ function duplicateInvoice(invoiceNumber) {
     if (!invoice) {
         return;
     }
-    const copy = { ...invoice, invoiceNumber: getNextInvoiceNumber() };
+    const newNumber = getNextInvoiceNumber();
+    const copy = { ...invoice, invoiceNumber: newNumber };
+    if (Array.isArray(copy.metaFields) && copy.metaFields.length) {
+        copy.metaFields = copy.metaFields.map(field => {
+            if (field.key === 'invoiceNumber') {
+                return { ...field, value: newNumber };
+            }
+            return field;
+        });
+    } else {
+        copy.metaFields = getDefaultMetaFields().map(field => ({
+            ...field,
+            value: field.key === 'invoiceNumber'
+                ? newNumber
+                : field.key === 'invoiceDate'
+                ? (invoice.date || defaultDate)
+                : field.key === 'projectCode'
+                ? (invoice.project || '')
+                : field.key === 'supervisor'
+                ? (invoice.supervisor || '')
+                : field.value
+        }));
+    }
     savedInvoices.push(copy);
     saveInvoices();
     renderSavedView();

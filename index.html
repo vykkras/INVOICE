@@ -43,6 +43,7 @@
                 <div class="saved-actions">
                     <button class="btn btn-new" type="button" onclick="startNewInvoiceInSavedFolder()">+ New Invoice</button>
                     <button class="btn btn-folder" type="button" onclick="openFolderCreator()">+ New Folder</button>
+                    <button class="btn btn-print" type="button" onclick="printFolderInvoices()">🖨️ Print Folder</button>
                     <button class="btn btn-home" type="button" onclick="goHome()">🏠 Home</button>
                 </div>
             </div>
@@ -119,7 +120,10 @@
                         <!-- Items will be added here -->
                     </tbody>
                 </table>
-                <button class="btn-add-item" onclick="addItem()">+ Add Item</button>
+                <div class="items-actions">
+                    <button class="btn-add-item" onclick="addItem()">+ Add Item</button>
+                    <button class="btn-clear-items" type="button" onclick="clearItemData()">Clear Quantities</button>
+                </div>
             </div>
 
             <!-- Totals Section -->
