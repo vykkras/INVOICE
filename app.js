@@ -127,6 +127,21 @@ function getNextInvoiceNumber() {
     return String(maxNumber + 1).padStart(4, '0');
 }
 
+function formatCurrency(amount) {
+    return '$' + amount.toFixed(2);
+}
+
+function getInvoiceTotal(invoice) {
+    if (!invoice || !Array.isArray(invoice.items)) {
+        return 0;
+    }
+    return invoice.items.reduce((sum, item) => {
+        const qty = parseFloat(item.quantity) || 0;
+        const rate = parseFloat(item.rate) || 0;
+        return sum + qty * rate;
+    }, 0);
+}
+
 const printBtnFresh = document.getElementById('printBtnFresh');
 if (printBtnFresh) {
     printBtnFresh.addEventListener('click', () => {
@@ -694,8 +709,15 @@ function renderSavedView() {
 
         const meta = document.createElement('div');
         meta.className = 'saved-item-meta';
-        const count = savedInvoices.filter(inv => inv.folderId === folder.id).length;
-        meta.textContent = `${count} invoice${count === 1 ? '' : 's'}`;
+        const folderInvoices = savedInvoices.filter(inv => String(inv.folderId || '') === String(folder.id || ''));
+        const count = folderInvoices.length;
+        const total = folderInvoices.reduce((sum, inv) => sum + getInvoiceTotal(inv), 0);
+        const countSpan = document.createElement('span');
+        countSpan.textContent = `${count} invoice${count === 1 ? '' : 's'}`;
+        const totalSpan = document.createElement('span');
+        totalSpan.textContent = `Total: ${formatCurrency(total)}`;
+        meta.appendChild(countSpan);
+        meta.appendChild(totalSpan);
 
         const actions = document.createElement('div');
         actions.className = 'saved-item-actions';
