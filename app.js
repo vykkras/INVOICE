@@ -264,15 +264,15 @@ function isInvoiceIncomplete(invoice) {
         return true;
     }
     const hasItems = Array.isArray(invoice.items) && invoice.items.length > 0;
-    const hasMeta = Array.isArray(invoice.metaFields) && invoice.metaFields.length > 0;
-    const hasDetails = Boolean(
+    if (hasItems) {
+        return false;
+    }
+    const hasHeader = Boolean(
         invoice.from ||
         invoice.billTo ||
-        invoice.billToAddress ||
-        invoice.supervisor ||
-        invoice.date
+        invoice.billToAddress
     );
-    return !(hasItems || hasMeta || hasDetails);
+    return !hasHeader;
 }
 
 function renderMetaFields(fields) {
