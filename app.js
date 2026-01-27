@@ -1319,13 +1319,16 @@ async function loadStateFromSupabase() {
                 .eq('workspace_id', workspaceId)
                 .order('position', { ascending: true })
         ]);
-        if (foldersRes.error || invoicesRes.error || itemsRes.error) {
-            console.warn('Supabase load failed', foldersRes.error || invoicesRes.error || itemsRes.error);
-            throw foldersRes.error || invoicesRes.error || itemsRes.error;
+        if (foldersRes.error || invoicesRes.error) {
+            console.warn('Supabase load failed', foldersRes.error || invoicesRes.error);
+            throw foldersRes.error || invoicesRes.error;
+        }
+        if (itemsRes.error) {
+            console.warn('Supabase items load failed', itemsRes.error);
         }
         const foldersData = foldersRes.data || [];
         const invoicesData = invoicesRes.data || [];
-        const itemsData = itemsRes.data || [];
+        const itemsData = itemsRes.error ? [] : (itemsRes.data || []);
         const hasRemoteData = Boolean(foldersData.length || invoicesData.length || itemsData.length);
         if (!hasRemoteData) {
             const legacyLoaded = await loadLegacyStateFromSupabase();
