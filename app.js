@@ -27,6 +27,7 @@ let moveDialogInvoiceNumber = null;
 let moveDialogFolderId = null;
 let supabaseClient = null;
 let supabaseSyncTimer = null;
+let remoteStateLoaded = false;
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -1170,6 +1171,64 @@ async function persistStateToSupabase() {
                 console.warn('Supabase item insert failed', insertError);
             }
         }
+        if (remoteStateLoaded) {
+            const [remoteInvoicesRes, remoteFoldersRes] = await Promise.all([
+                supabaseClient
+                    .from('invoices')
+                    .select('invoice_number')
+                    .eq('workspace_id', workspaceId),
+                supabaseClient
+                    .from('invoice_folders')
+                    .select('id')
+                    .eq('workspace_id', workspaceId)
+            ]);
+            if (remoteInvoicesRes.error) {
+                console.warn('Supabase invoice fetch failed', remoteInvoicesRes.error);
+            } else {
+                const localInvoiceNumbers = new Set(
+                    invoicesPayload.map(inv => inv.invoice_number)
+                );
+                const remoteInvoiceNumbers = (remoteInvoicesRes.data || [])
+                    .map(row => String(row.invoice_number || ''))
+                    .filter(Boolean);
+                const invoicesToDelete = remoteInvoiceNumbers.filter(
+                    num => !localInvoiceNumbers.has(num)
+                );
+                if (invoicesToDelete.length) {
+                    const { error: deleteError } = await supabaseClient
+                        .from('invoices')
+                        .delete()
+                        .eq('workspace_id', workspaceId)
+                        .in('invoice_number', invoicesToDelete);
+                    if (deleteError) {
+                        console.warn('Supabase invoice delete failed', deleteError);
+                    }
+                }
+            }
+            if (remoteFoldersRes.error) {
+                console.warn('Supabase folder fetch failed', remoteFoldersRes.error);
+            } else {
+                const localFolderIds = new Set(
+                    foldersPayload.map(folder => folder.id)
+                );
+                const remoteFolderIds = (remoteFoldersRes.data || [])
+                    .map(row => String(row.id || ''))
+                    .filter(Boolean);
+                const foldersToDelete = remoteFolderIds.filter(
+                    id => !localFolderIds.has(id)
+                );
+                if (foldersToDelete.length) {
+                    const { error: deleteError } = await supabaseClient
+                        .from('invoice_folders')
+                        .delete()
+                        .eq('workspace_id', workspaceId)
+                        .in('id', foldersToDelete);
+                    if (deleteError) {
+                        console.warn('Supabase folder delete failed', deleteError);
+                    }
+                }
+            }
+        }
     } catch (error) {
         console.warn('Supabase sync failed', error);
     }
@@ -1207,6 +1266,7 @@ async function loadStateFromSupabase() {
         if (!hasRemoteData) {
             const legacyLoaded = await loadLegacyStateFromSupabase();
             if (legacyLoaded) {
+                remoteStateLoaded = true;
                 scheduleSupabaseSync();
                 return;
             }
@@ -1245,12 +1305,14 @@ async function loadStateFromSupabase() {
             paid: Boolean(invoice.paid),
             folderId: invoice.folder_id ? String(invoice.folder_id) : null
         }));
+        remoteStateLoaded = true;
         localStorage.setItem('invoices', JSON.stringify(savedInvoices));
         localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
         localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
     } catch (error) {
         const legacyLoaded = await loadLegacyStateFromSupabase();
         if (legacyLoaded) {
+            remoteStateLoaded = true;
             scheduleSupabaseSync();
         }
     }
