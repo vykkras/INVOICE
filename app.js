@@ -28,6 +28,8 @@ let moveDialogFolderId = null;
 let supabaseClient = null;
 let supabaseSyncTimer = null;
 let remoteStateLoaded = false;
+let allowSupabaseSync = false;
+let pendingDuplicate = null;
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -375,6 +377,9 @@ function saveInvoice() {
     } else {
         data.folderId = currentFolderId || ensureDefaultFolder();
         savedInvoices.push(data);
+    }
+    if (pendingDuplicate && data.invoiceNumber === pendingDuplicate.invoiceNumber) {
+        pendingDuplicate = null;
     }
     
     saveInvoices();
@@ -1081,7 +1086,7 @@ function initSupabase() {
 }
 
 function scheduleSupabaseSync() {
-    if (!supabaseClient) {
+    if (!supabaseClient || !allowSupabaseSync) {
         return;
     }
     if (supabaseSyncTimer) {
@@ -1093,7 +1098,7 @@ function scheduleSupabaseSync() {
 }
 
 async function persistStateToSupabase() {
-    if (!supabaseClient) {
+    if (!supabaseClient || !allowSupabaseSync) {
         return;
     }
     const workspaceId = WORKSPACE_ID;
@@ -1267,10 +1272,12 @@ async function loadStateFromSupabase() {
             const legacyLoaded = await loadLegacyStateFromSupabase();
             if (legacyLoaded) {
                 remoteStateLoaded = true;
+                allowSupabaseSync = true;
                 scheduleSupabaseSync();
                 return;
             }
             if (savedInvoices.length || savedFolders.length) {
+                allowSupabaseSync = true;
                 scheduleSupabaseSync();
             }
             return;
@@ -1306,6 +1313,7 @@ async function loadStateFromSupabase() {
             folderId: invoice.folder_id ? String(invoice.folder_id) : null
         }));
         remoteStateLoaded = true;
+        allowSupabaseSync = true;
         localStorage.setItem('invoices', JSON.stringify(savedInvoices));
         localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
         localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
@@ -1313,6 +1321,7 @@ async function loadStateFromSupabase() {
         const legacyLoaded = await loadLegacyStateFromSupabase();
         if (legacyLoaded) {
             remoteStateLoaded = true;
+            allowSupabaseSync = true;
             scheduleSupabaseSync();
         }
     }
@@ -1362,13 +1371,20 @@ function duplicateInvoice(invoiceNumber) {
         return;
     }
     const newNumber = getNextInvoiceNumber();
-    const copy = { ...invoice, invoiceNumber: newNumber };
-    if (Array.isArray(copy.metaFields) && copy.metaFields.length) {
-        copy.metaFields = copy.metaFields.map(field => {
+    const copy = {
+        ...invoice,
+        invoiceNumber: newNumber,
+        items: Array.isArray(invoice.items)
+            ? invoice.items.map(item => ({ ...item }))
+            : [],
+        paid: false
+    };
+    if (Array.isArray(invoice.metaFields) && invoice.metaFields.length) {
+        copy.metaFields = invoice.metaFields.map(field => {
             if (field.key === 'invoiceNumber') {
                 return { ...field, value: newNumber };
             }
-            return field;
+            return { ...field };
         });
     } else {
         copy.metaFields = getDefaultMetaFields().map(field => ({
@@ -1384,8 +1400,7 @@ function duplicateInvoice(invoiceNumber) {
                 : field.value
         }));
     }
-    savedInvoices.push(copy);
-    saveInvoices();
+    pendingDuplicate = copy;
     loadInvoice(copy);
     showEditor();
 }
