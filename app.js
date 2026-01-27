@@ -1137,35 +1137,41 @@ async function persistStateToSupabase() {
         });
     });
     try {
-        await supabaseClient
-            .from('invoice_items')
-            .delete()
-            .eq('workspace_id', workspaceId);
-        await supabaseClient
-            .from('invoices')
-            .delete()
-            .eq('workspace_id', workspaceId);
-        await supabaseClient
-            .from('invoice_folders')
-            .delete()
-            .eq('workspace_id', workspaceId);
         if (foldersPayload.length) {
-            await supabaseClient
+            const { error } = await supabaseClient
                 .from('invoice_folders')
-                .insert(foldersPayload);
+                .upsert(foldersPayload, { onConflict: 'workspace_id,id' });
+            if (error) {
+                console.warn('Supabase folder upsert failed', error);
+            }
         }
         if (invoicesPayload.length) {
-            await supabaseClient
+            const { error } = await supabaseClient
                 .from('invoices')
-                .insert(invoicesPayload);
+                .upsert(invoicesPayload, { onConflict: 'workspace_id,invoice_number' });
+            if (error) {
+                console.warn('Supabase invoice upsert failed', error);
+            }
         }
-        if (itemsPayload.length) {
-            await supabaseClient
+        if (itemsPayload.length && invoicesPayload.length) {
+            const invoiceNumbers = invoicesPayload.map(inv => inv.invoice_number);
+            const { error: deleteError } = await supabaseClient
+                .from('invoice_items')
+                .delete()
+                .eq('workspace_id', workspaceId)
+                .in('invoice_number', invoiceNumbers);
+            if (deleteError) {
+                console.warn('Supabase item delete failed', deleteError);
+            }
+            const { error: insertError } = await supabaseClient
                 .from('invoice_items')
                 .insert(itemsPayload);
+            if (insertError) {
+                console.warn('Supabase item insert failed', insertError);
+            }
         }
     } catch (error) {
-        // Keep localStorage as fallback if remote save fails.
+        console.warn('Supabase sync failed', error);
     }
 }
 
@@ -1191,6 +1197,7 @@ async function loadStateFromSupabase() {
                 .order('position', { ascending: true })
         ]);
         if (foldersRes.error || invoicesRes.error || itemsRes.error) {
+            console.warn('Supabase load failed', foldersRes.error || invoicesRes.error || itemsRes.error);
             throw foldersRes.error || invoicesRes.error || itemsRes.error;
         }
         const foldersData = foldersRes.data || [];
