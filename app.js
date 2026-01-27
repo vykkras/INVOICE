@@ -1379,27 +1379,29 @@ function duplicateInvoice(invoiceNumber) {
             : [],
         paid: false
     };
-    if (Array.isArray(invoice.metaFields) && invoice.metaFields.length) {
-        copy.metaFields = invoice.metaFields.map(field => {
-            if (field.key === 'invoiceNumber') {
-                return { ...field, value: newNumber };
-            }
-            return { ...field };
-        });
-    } else {
-        copy.metaFields = getDefaultMetaFields().map(field => ({
+    const existingMeta = Array.isArray(invoice.metaFields) ? invoice.metaFields : [];
+    const metaByKey = new Map(existingMeta.map(field => [field.key, field]));
+    const baseMeta = getDefaultMetaFields().map(field => {
+        const existing = metaByKey.get(field.key);
+        const value = field.key === 'invoiceNumber'
+            ? newNumber
+            : field.key === 'invoiceDate'
+            ? (invoice.date || defaultDate)
+            : field.key === 'projectCode'
+            ? (invoice.project || '')
+            : field.key === 'supervisor'
+            ? (invoice.supervisor || '')
+            : field.value;
+        return {
             ...field,
-            value: field.key === 'invoiceNumber'
-                ? newNumber
-                : field.key === 'invoiceDate'
-                ? (invoice.date || defaultDate)
-                : field.key === 'projectCode'
-                ? (invoice.project || '')
-                : field.key === 'supervisor'
-                ? (invoice.supervisor || '')
-                : field.value
-        }));
-    }
+            ...(existing ? { label: existing.label, type: existing.type } : {}),
+            value
+        };
+    });
+    const customMeta = existingMeta
+        .filter(field => !['invoiceNumber', 'invoiceDate', 'projectCode', 'supervisor'].includes(field.key))
+        .map(field => ({ ...field }));
+    copy.metaFields = [...baseMeta, ...customMeta];
     pendingDuplicate = copy;
     loadInvoice(copy);
     showEditor();
