@@ -30,11 +30,6 @@ let supabaseSyncTimer = null;
 let remoteStateLoaded = false;
 let allowSupabaseSync = false;
 let pendingDuplicate = null;
-let localChangesPendingLoad = false;
-const pendingInvoiceSync = new Set();
-const pendingInvoiceDelete = new Set();
-const pendingFolderSync = new Set();
-const pendingFolderDelete = new Set();
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -42,25 +37,16 @@ const WORKSPACE_ID = 'default';
 
 function saveFolders() {
     localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
-    if (!allowSupabaseSync) {
-        localChangesPendingLoad = true;
-    }
     scheduleSupabaseSync();
 }
 
 function saveInvoices() {
     localStorage.setItem('invoices', JSON.stringify(savedInvoices));
-    if (!allowSupabaseSync) {
-        localChangesPendingLoad = true;
-    }
     scheduleSupabaseSync();
 }
 
 function saveDeleteHistory() {
     localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
-    if (!allowSupabaseSync) {
-        localChangesPendingLoad = true;
-    }
     scheduleSupabaseSync();
 }
 function createFolderData(name) {
@@ -777,12 +763,6 @@ function moveInvoice(invoiceNumber, targetFolderId, beforeInvoiceNumber = null) 
     renderSavedView();
 }
 
-// Initialize with some sample items from the screenshot
-addItem({description: 'A-001 STRAND', quantity: 0, rate: 0.67});
-addItem({description: 'A-007 Place Anchor', quantity: 1, rate: 150});
-addItem({description: 'A-010 Place Make Ready', quantity: 0, rate: 39});
-addItem({description: 'U-001 Composite Underground Bore with Conduit Placement', quantity: 699, rate: 11.5});
-addItem({description: 'U-001C Conduit Adder in same bore', quantity: 251, rate: 0.5});
 renderMetaFields(getDefaultMetaFields());
 
 function isDescendant(folderId, potentialParentId) {
@@ -1137,32 +1117,24 @@ function markInvoiceDirty(invoiceNumber) {
     if (!invoiceNumber) {
         return;
     }
-    pendingInvoiceDelete.delete(String(invoiceNumber));
-    pendingInvoiceSync.add(String(invoiceNumber));
 }
 
 function markInvoiceDeleted(invoiceNumber) {
     if (!invoiceNumber) {
         return;
     }
-    pendingInvoiceSync.delete(String(invoiceNumber));
-    pendingInvoiceDelete.add(String(invoiceNumber));
 }
 
 function markFolderDirty(folderId) {
     if (!folderId) {
         return;
     }
-    pendingFolderDelete.delete(String(folderId));
-    pendingFolderSync.add(String(folderId));
 }
 
 function markFolderDeleted(folderId) {
     if (!folderId) {
         return;
     }
-    pendingFolderSync.delete(String(folderId));
-    pendingFolderDelete.add(String(folderId));
 }
 
 function scheduleSupabaseSync() {
@@ -1183,23 +1155,14 @@ async function persistStateToSupabase() {
     }
     const workspaceId = WORKSPACE_ID;
     const now = new Date().toISOString();
-    const foldersToSync = pendingFolderSync.size
-        ? savedFolders.filter(folder => pendingFolderSync.has(String(folder.id)))
-        : [];
-    const invoicesToSync = pendingInvoiceSync.size
-        ? savedInvoices.filter(invoice => pendingInvoiceSync.has(String(invoice.invoiceNumber)))
-        : [];
-    if (!foldersToSync.length && !invoicesToSync.length && !pendingInvoiceDelete.size && !pendingFolderDelete.size) {
-        return;
-    }
-    const foldersPayload = foldersToSync.map(folder => ({
+    const foldersPayload = savedFolders.map(folder => ({
         workspace_id: workspaceId,
         id: String(folder.id),
         name: folder.name || '',
         parent_id: folder.parentId ? String(folder.parentId) : null,
         updated_at: now
     }));
-    const invoicesPayload = invoicesToSync
+    const invoicesPayload = savedInvoices
         .filter(invoice => invoice.invoiceNumber)
         .map(invoice => ({
             workspace_id: workspaceId,
@@ -1216,7 +1179,7 @@ async function persistStateToSupabase() {
             updated_at: now
         }));
     const itemsPayload = [];
-    invoicesToSync.forEach(invoice => {
+    savedInvoices.forEach(invoice => {
         if (!invoice.invoiceNumber || !Array.isArray(invoice.items)) {
             return;
         }
@@ -1267,32 +1230,62 @@ async function persistStateToSupabase() {
                 }
             }
         }
-        if (pendingInvoiceDelete.size) {
-            const invoicesToDelete = Array.from(pendingInvoiceDelete);
-            const { error: deleteError } = await supabaseClient
+        const [remoteInvoicesRes, remoteFoldersRes] = await Promise.all([
+            supabaseClient
                 .from('invoices')
-                .delete()
-                .eq('workspace_id', workspaceId)
-                .in('invoice_number', invoicesToDelete);
-            if (deleteError) {
-                console.warn('Supabase invoice delete failed', deleteError);
-            }
-        }
-        if (pendingFolderDelete.size) {
-            const foldersToDelete = Array.from(pendingFolderDelete);
-            const { error: deleteError } = await supabaseClient
+                .select('invoice_number')
+                .eq('workspace_id', workspaceId),
+            supabaseClient
                 .from('invoice_folders')
-                .delete()
+                .select('id')
                 .eq('workspace_id', workspaceId)
-                .in('id', foldersToDelete);
-            if (deleteError) {
-                console.warn('Supabase folder delete failed', deleteError);
+        ]);
+        if (remoteInvoicesRes.error) {
+            console.warn('Supabase invoice fetch failed', remoteInvoicesRes.error);
+        } else {
+            const localInvoiceNumbers = new Set(
+                invoicesPayload.map(inv => inv.invoice_number)
+            );
+            const remoteInvoiceNumbers = (remoteInvoicesRes.data || [])
+                .map(row => String(row.invoice_number || ''))
+                .filter(Boolean);
+            const invoicesToDelete = remoteInvoiceNumbers.filter(
+                num => !localInvoiceNumbers.has(num)
+            );
+            if (invoicesToDelete.length) {
+                const { error: deleteError } = await supabaseClient
+                    .from('invoices')
+                    .delete()
+                    .eq('workspace_id', workspaceId)
+                    .in('invoice_number', invoicesToDelete);
+                if (deleteError) {
+                    console.warn('Supabase invoice delete failed', deleteError);
+                }
             }
         }
-        pendingInvoiceSync.clear();
-        pendingFolderSync.clear();
-        pendingInvoiceDelete.clear();
-        pendingFolderDelete.clear();
+        if (remoteFoldersRes.error) {
+            console.warn('Supabase folder fetch failed', remoteFoldersRes.error);
+        } else {
+            const localFolderIds = new Set(
+                foldersPayload.map(folder => folder.id)
+            );
+            const remoteFolderIds = (remoteFoldersRes.data || [])
+                .map(row => String(row.id || ''))
+                .filter(Boolean);
+            const foldersToDelete = remoteFolderIds.filter(
+                id => !localFolderIds.has(id)
+            );
+            if (foldersToDelete.length) {
+                const { error: deleteError } = await supabaseClient
+                    .from('invoice_folders')
+                    .delete()
+                    .eq('workspace_id', workspaceId)
+                    .in('id', foldersToDelete);
+                if (deleteError) {
+                    console.warn('Supabase folder delete failed', deleteError);
+                }
+            }
+        }
     } catch (error) {
         console.warn('Supabase sync failed', error);
     }
@@ -1377,44 +1370,10 @@ async function loadStateFromSupabase() {
         remoteInvoices.forEach(inv => {
             inv.metaFields = buildMetaFieldsForInvoice(inv);
         });
-        if (localChangesPendingLoad) {
-            const localInvoicesByNumber = new Map(
-                savedInvoices.map(inv => [String(inv.invoiceNumber || ''), inv])
-            );
-            remoteInvoices.forEach(remoteInv => {
-                const key = String(remoteInv.invoiceNumber || '');
-                if (!key || localInvoicesByNumber.has(key)) {
-                    const localInv = localInvoicesByNumber.get(key);
-                    if (localInv && isInvoiceIncomplete(localInv)) {
-                        const index = savedInvoices.indexOf(localInv);
-                        if (index >= 0) {
-                            savedInvoices[index] = remoteInv;
-                        }
-                    }
-                    return;
-                }
-                savedInvoices.push(remoteInv);
-            });
-            const localFoldersById = new Map(
-                savedFolders.map(folder => [String(folder.id || ''), folder])
-            );
-            remoteFolders.forEach(remoteFolder => {
-                const key = String(remoteFolder.id || '');
-                if (!key || localFoldersById.has(key)) {
-                    return;
-                }
-                savedFolders.push(remoteFolder);
-            });
-        } else {
-            savedFolders = remoteFolders;
-            savedInvoices = remoteInvoices;
-        }
+        savedFolders = remoteFolders;
+        savedInvoices = remoteInvoices;
         remoteStateLoaded = true;
         allowSupabaseSync = true;
-        if (localChangesPendingLoad) {
-            localChangesPendingLoad = false;
-            scheduleSupabaseSync();
-        }
         localStorage.setItem('invoices', JSON.stringify(savedInvoices));
         localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
         localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
