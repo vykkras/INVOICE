@@ -30,6 +30,7 @@ let supabaseSyncTimer = null;
 let remoteStateLoaded = false;
 let allowSupabaseSync = false;
 let pendingDuplicate = null;
+let localChangesPendingLoad = false;
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -37,16 +38,25 @@ const WORKSPACE_ID = 'default';
 
 function saveFolders() {
     localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
+    if (!allowSupabaseSync) {
+        localChangesPendingLoad = true;
+    }
     scheduleSupabaseSync();
 }
 
 function saveInvoices() {
     localStorage.setItem('invoices', JSON.stringify(savedInvoices));
+    if (!allowSupabaseSync) {
+        localChangesPendingLoad = true;
+    }
     scheduleSupabaseSync();
 }
 
 function saveDeleteHistory() {
     localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
+    if (!allowSupabaseSync) {
+        localChangesPendingLoad = true;
+    }
     scheduleSupabaseSync();
 }
 function createFolderData(name) {
@@ -1294,12 +1304,12 @@ async function loadStateFromSupabase() {
                 rate: Number(item.rate) || 0
             });
         });
-        savedFolders = foldersData.map(folder => ({
+        const remoteFolders = foldersData.map(folder => ({
             id: String(folder.id),
             name: folder.name || '',
             parentId: folder.parent_id ? String(folder.parent_id) : null
         }));
-        savedInvoices = invoicesData.map(invoice => ({
+        const remoteInvoices = invoicesData.map(invoice => ({
             invoiceNumber: String(invoice.invoice_number || ''),
             date: invoice.date || '',
             project: invoice.project || '',
@@ -1312,8 +1322,37 @@ async function loadStateFromSupabase() {
             paid: Boolean(invoice.paid),
             folderId: invoice.folder_id ? String(invoice.folder_id) : null
         }));
+        if (localChangesPendingLoad) {
+            const localInvoicesByNumber = new Map(
+                savedInvoices.map(inv => [String(inv.invoiceNumber || ''), inv])
+            );
+            remoteInvoices.forEach(remoteInv => {
+                const key = String(remoteInv.invoiceNumber || '');
+                if (!key || localInvoicesByNumber.has(key)) {
+                    return;
+                }
+                savedInvoices.push(remoteInv);
+            });
+            const localFoldersById = new Map(
+                savedFolders.map(folder => [String(folder.id || ''), folder])
+            );
+            remoteFolders.forEach(remoteFolder => {
+                const key = String(remoteFolder.id || '');
+                if (!key || localFoldersById.has(key)) {
+                    return;
+                }
+                savedFolders.push(remoteFolder);
+            });
+        } else {
+            savedFolders = remoteFolders;
+            savedInvoices = remoteInvoices;
+        }
         remoteStateLoaded = true;
         allowSupabaseSync = true;
+        if (localChangesPendingLoad) {
+            localChangesPendingLoad = false;
+            scheduleSupabaseSync();
+        }
         localStorage.setItem('invoices', JSON.stringify(savedInvoices));
         localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
         localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
