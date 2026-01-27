@@ -259,6 +259,22 @@ function buildMetaFieldsForInvoice(invoice) {
     return [...baseMeta, ...customMeta];
 }
 
+function isInvoiceIncomplete(invoice) {
+    if (!invoice) {
+        return true;
+    }
+    const hasItems = Array.isArray(invoice.items) && invoice.items.length > 0;
+    const hasMeta = Array.isArray(invoice.metaFields) && invoice.metaFields.length > 0;
+    const hasDetails = Boolean(
+        invoice.from ||
+        invoice.billTo ||
+        invoice.billToAddress ||
+        invoice.supervisor ||
+        invoice.date
+    );
+    return !(hasItems || hasMeta || hasDetails);
+}
+
 function renderMetaFields(fields) {
     const wrapper = document.getElementById('metaFields');
     if (!wrapper) {
@@ -1365,6 +1381,13 @@ async function loadStateFromSupabase() {
             remoteInvoices.forEach(remoteInv => {
                 const key = String(remoteInv.invoiceNumber || '');
                 if (!key || localInvoicesByNumber.has(key)) {
+                    const localInv = localInvoicesByNumber.get(key);
+                    if (localInv && isInvoiceIncomplete(localInv)) {
+                        const index = savedInvoices.indexOf(localInv);
+                        if (index >= 0) {
+                            savedInvoices[index] = remoteInv;
+                        }
+                    }
                     return;
                 }
                 savedInvoices.push(remoteInv);
