@@ -1386,7 +1386,8 @@ function duplicateInvoice(invoiceNumber) {
     }
     savedInvoices.push(copy);
     saveInvoices();
-    renderSavedView();
+    loadInvoice(copy);
+    showEditor();
 }
 
 function toggleInvoicePaid(invoiceNumber) {
