@@ -228,6 +228,32 @@ function getDefaultMetaFields() {
     ];
 }
 
+function buildMetaFieldsForInvoice(invoice) {
+    const existing = Array.isArray(invoice.metaFields) ? invoice.metaFields : [];
+    const metaByKey = new Map(existing.map(field => [field.key, field]));
+    const baseMeta = getDefaultMetaFields().map(field => {
+        const value = field.key === 'invoiceNumber'
+            ? (invoice.invoiceNumber || '')
+            : field.key === 'invoiceDate'
+            ? (invoice.date || defaultDate)
+            : field.key === 'projectCode'
+            ? (invoice.project || '')
+            : field.key === 'supervisor'
+            ? (invoice.supervisor || '')
+            : field.value;
+        const existingField = metaByKey.get(field.key);
+        return {
+            ...field,
+            ...(existingField ? { label: existingField.label, type: existingField.type } : {}),
+            value
+        };
+    });
+    const customMeta = existing
+        .filter(field => !['invoiceNumber', 'invoiceDate', 'projectCode', 'supervisor'].includes(field.key))
+        .map(field => ({ ...field }));
+    return [...baseMeta, ...customMeta];
+}
+
 function renderMetaFields(fields) {
     const wrapper = document.getElementById('metaFields');
     if (!wrapper) {
@@ -402,20 +428,7 @@ function loadInvoice(data) {
     lastOpenedFolderId = data.folderId ? String(data.folderId) : null;
     currentFolderId = data.folderId || ensureDefaultFolder();
     currentInvoiceNumber = data.invoiceNumber || null;
-    const fields = data.metaFields && data.metaFields.length
-        ? data.metaFields
-        : getDefaultMetaFields().map(field => ({
-            ...field,
-            value: field.key === 'invoiceNumber'
-                ? data.invoiceNumber
-                : field.key === 'invoiceDate'
-                ? data.date
-                : field.key === 'projectCode'
-                ? data.project
-                : field.key === 'supervisor'
-                ? data.supervisor
-                : field.value
-        }));
+    const fields = buildMetaFieldsForInvoice(data);
     renderMetaFields(fields);
     document.getElementById('fromCompany').value = data.from;
     document.getElementById('billToCompany').value = data.billTo;
@@ -1322,6 +1335,9 @@ async function loadStateFromSupabase() {
             paid: Boolean(invoice.paid),
             folderId: invoice.folder_id ? String(invoice.folder_id) : null
         }));
+        remoteInvoices.forEach(inv => {
+            inv.metaFields = buildMetaFieldsForInvoice(inv);
+        });
         if (localChangesPendingLoad) {
             const localInvoicesByNumber = new Map(
                 savedInvoices.map(inv => [String(inv.invoiceNumber || ''), inv])
