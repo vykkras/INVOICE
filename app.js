@@ -61,7 +61,7 @@ function ensureDefaultFolder() {
     if (!savedFolders.length) {
         const defaultFolder = createFolderData('General');
         savedFolders.push(defaultFolder);
-        markFolderDirty(defaultFolder.id);
+        syncFolderToSupabase(defaultFolder);
         saveFolders();
         return defaultFolder.id;
     }
@@ -421,7 +421,7 @@ function saveInvoice() {
         data.folderId = currentFolderId || ensureDefaultFolder();
         savedInvoices.push(data);
     }
-    markInvoiceDirty(data.invoiceNumber);
+    syncInvoiceToSupabase(data);
     if (pendingDuplicate && data.invoiceNumber === pendingDuplicate.invoiceNumber) {
         pendingDuplicate = null;
     }
@@ -731,7 +731,7 @@ function createFolder() {
     const folder = createFolderData(trimmed);
     folder.parentId = currentSavedFolderId ? String(currentSavedFolderId) : null;
     savedFolders.push(folder);
-    markFolderDirty(folder.id);
+    syncFolderToSupabase(folder);
     saveFolders();
     input.value = '';
     cancelFolderCreate();
@@ -758,7 +758,7 @@ function moveInvoice(invoiceNumber, targetFolderId, beforeInvoiceNumber = null) 
     savedInvoices.splice(fromIndex, 1);
     invoice.folderId = targetFolderId;
     savedInvoices.splice(insertIndex, 0, invoice);
-    markInvoiceDirty(invoice.invoiceNumber);
+    syncInvoiceToSupabase(invoice);
     saveInvoices();
     renderSavedView();
 }
@@ -794,7 +794,7 @@ function moveFolder(folderId, targetFolderId) {
         return;
     }
     folder.parentId = targetFolderId || null;
-    markFolderDirty(folder.id);
+    syncFolderToSupabase(folder);
     saveFolders();
     renderSavedView();
 }
@@ -1138,156 +1138,132 @@ function markFolderDeleted(folderId) {
 }
 
 function scheduleSupabaseSync() {
-    if (!supabaseClient || !allowSupabaseSync) {
-        return;
-    }
-    if (supabaseSyncTimer) {
-        clearTimeout(supabaseSyncTimer);
-    }
-    supabaseSyncTimer = setTimeout(() => {
-        persistStateToSupabase();
-    }, 400);
+    // Supabase-first: avoid bulk sync to prevent accidental overwrites.
+    return;
 }
 
 async function persistStateToSupabase() {
-    if (!supabaseClient || !allowSupabaseSync) {
+    return;
+}
+
+async function syncInvoiceToSupabase(invoice) {
+    if (!supabaseClient || !allowSupabaseSync || !invoice || !invoice.invoiceNumber) {
         return;
     }
     const workspaceId = WORKSPACE_ID;
     const now = new Date().toISOString();
-    const foldersPayload = savedFolders.map(folder => ({
-        workspace_id: workspaceId,
-        id: String(folder.id),
-        name: folder.name || '',
-        parent_id: folder.parentId ? String(folder.parentId) : null,
-        updated_at: now
-    }));
-    const invoicesPayload = savedInvoices
-        .filter(invoice => invoice.invoiceNumber)
-        .map(invoice => ({
-            workspace_id: workspaceId,
-            invoice_number: String(invoice.invoiceNumber),
-            date: invoice.date || null,
-            project: invoice.project || '',
-            supervisor: invoice.supervisor || '',
-            from_company: invoice.from || '',
-            bill_to: invoice.billTo || '',
-            bill_to_address: invoice.billToAddress || '',
-            meta_fields: Array.isArray(invoice.metaFields) ? invoice.metaFields : [],
-            paid: Boolean(invoice.paid),
-            folder_id: invoice.folderId ? String(invoice.folderId) : null,
-            updated_at: now
-        }));
-    const itemsPayload = [];
-    savedInvoices.forEach(invoice => {
-        if (!invoice.invoiceNumber || !Array.isArray(invoice.items)) {
+    try {
+        const { error: invoiceError } = await supabaseClient
+            .from('invoices')
+            .upsert(
+                {
+                    workspace_id: workspaceId,
+                    invoice_number: String(invoice.invoiceNumber),
+                    date: invoice.date || null,
+                    project: invoice.project || '',
+                    supervisor: invoice.supervisor || '',
+                    from_company: invoice.from || '',
+                    bill_to: invoice.billTo || '',
+                    bill_to_address: invoice.billToAddress || '',
+                    meta_fields: Array.isArray(invoice.metaFields) ? invoice.metaFields : [],
+                    paid: Boolean(invoice.paid),
+                    folder_id: invoice.folderId ? String(invoice.folderId) : null,
+                    updated_at: now
+                },
+                { onConflict: 'workspace_id,invoice_number' }
+            );
+        if (invoiceError) {
+            console.warn('Supabase invoice upsert failed', invoiceError);
             return;
         }
-        invoice.items.forEach((item, index) => {
-            itemsPayload.push({
+        const { error: deleteError } = await supabaseClient
+            .from('invoice_items')
+            .delete()
+            .eq('workspace_id', workspaceId)
+            .eq('invoice_number', String(invoice.invoiceNumber));
+        if (deleteError) {
+            console.warn('Supabase item delete failed', deleteError);
+        }
+        if (Array.isArray(invoice.items) && invoice.items.length) {
+            const itemsPayload = invoice.items.map((item, index) => ({
                 workspace_id: workspaceId,
                 invoice_number: String(invoice.invoiceNumber),
                 position: index,
                 description: item.description || '',
                 quantity: Number(item.quantity) || 0,
                 rate: Number(item.rate) || 0
-            });
-        });
-    });
-    try {
-        if (foldersPayload.length) {
-            const { error } = await supabaseClient
-                .from('invoice_folders')
-                .upsert(foldersPayload, { onConflict: 'workspace_id,id' });
-            if (error) {
-                console.warn('Supabase folder upsert failed', error);
-            }
-        }
-        if (invoicesPayload.length) {
-            const { error } = await supabaseClient
-                .from('invoices')
-                .upsert(invoicesPayload, { onConflict: 'workspace_id,invoice_number' });
-            if (error) {
-                console.warn('Supabase invoice upsert failed', error);
-            }
-        }
-        if (invoicesPayload.length) {
-            const invoiceNumbers = invoicesPayload.map(inv => inv.invoice_number);
-            const { error: deleteError } = await supabaseClient
+            }));
+            const { error: insertError } = await supabaseClient
                 .from('invoice_items')
-                .delete()
-                .eq('workspace_id', workspaceId)
-                .in('invoice_number', invoiceNumbers);
-            if (deleteError) {
-                console.warn('Supabase item delete failed', deleteError);
-            }
-            if (itemsPayload.length) {
-                const { error: insertError } = await supabaseClient
-                    .from('invoice_items')
-                    .insert(itemsPayload);
-                if (insertError) {
-                    console.warn('Supabase item insert failed', insertError);
-                }
-            }
-        }
-        const [remoteInvoicesRes, remoteFoldersRes] = await Promise.all([
-            supabaseClient
-                .from('invoices')
-                .select('invoice_number')
-                .eq('workspace_id', workspaceId),
-            supabaseClient
-                .from('invoice_folders')
-                .select('id')
-                .eq('workspace_id', workspaceId)
-        ]);
-        if (remoteInvoicesRes.error) {
-            console.warn('Supabase invoice fetch failed', remoteInvoicesRes.error);
-        } else {
-            const localInvoiceNumbers = new Set(
-                invoicesPayload.map(inv => inv.invoice_number)
-            );
-            const remoteInvoiceNumbers = (remoteInvoicesRes.data || [])
-                .map(row => String(row.invoice_number || ''))
-                .filter(Boolean);
-            const invoicesToDelete = remoteInvoiceNumbers.filter(
-                num => !localInvoiceNumbers.has(num)
-            );
-            if (invoicesToDelete.length) {
-                const { error: deleteError } = await supabaseClient
-                    .from('invoices')
-                    .delete()
-                    .eq('workspace_id', workspaceId)
-                    .in('invoice_number', invoicesToDelete);
-                if (deleteError) {
-                    console.warn('Supabase invoice delete failed', deleteError);
-                }
-            }
-        }
-        if (remoteFoldersRes.error) {
-            console.warn('Supabase folder fetch failed', remoteFoldersRes.error);
-        } else {
-            const localFolderIds = new Set(
-                foldersPayload.map(folder => folder.id)
-            );
-            const remoteFolderIds = (remoteFoldersRes.data || [])
-                .map(row => String(row.id || ''))
-                .filter(Boolean);
-            const foldersToDelete = remoteFolderIds.filter(
-                id => !localFolderIds.has(id)
-            );
-            if (foldersToDelete.length) {
-                const { error: deleteError } = await supabaseClient
-                    .from('invoice_folders')
-                    .delete()
-                    .eq('workspace_id', workspaceId)
-                    .in('id', foldersToDelete);
-                if (deleteError) {
-                    console.warn('Supabase folder delete failed', deleteError);
-                }
+                .insert(itemsPayload);
+            if (insertError) {
+                console.warn('Supabase item insert failed', insertError);
             }
         }
     } catch (error) {
-        console.warn('Supabase sync failed', error);
+        console.warn('Supabase invoice sync failed', error);
+    }
+}
+
+async function deleteInvoiceFromSupabase(invoiceNumber) {
+    if (!supabaseClient || !allowSupabaseSync || !invoiceNumber) {
+        return;
+    }
+    try {
+        const { error } = await supabaseClient
+            .from('invoices')
+            .delete()
+            .eq('workspace_id', WORKSPACE_ID)
+            .eq('invoice_number', String(invoiceNumber));
+        if (error) {
+            console.warn('Supabase invoice delete failed', error);
+        }
+    } catch (error) {
+        console.warn('Supabase invoice delete failed', error);
+    }
+}
+
+async function syncFolderToSupabase(folder) {
+    if (!supabaseClient || !allowSupabaseSync || !folder) {
+        return;
+    }
+    const now = new Date().toISOString();
+    try {
+        const { error } = await supabaseClient
+            .from('invoice_folders')
+            .upsert(
+                {
+                    workspace_id: WORKSPACE_ID,
+                    id: String(folder.id),
+                    name: folder.name || '',
+                    parent_id: folder.parentId ? String(folder.parentId) : null,
+                    updated_at: now
+                },
+                { onConflict: 'workspace_id,id' }
+            );
+        if (error) {
+            console.warn('Supabase folder upsert failed', error);
+        }
+    } catch (error) {
+        console.warn('Supabase folder sync failed', error);
+    }
+}
+
+async function deleteFolderFromSupabase(folderId) {
+    if (!supabaseClient || !allowSupabaseSync || !folderId) {
+        return;
+    }
+    try {
+        const { error } = await supabaseClient
+            .from('invoice_folders')
+            .delete()
+            .eq('workspace_id', WORKSPACE_ID)
+            .eq('id', String(folderId));
+        if (error) {
+            console.warn('Supabase folder delete failed', error);
+        }
+    } catch (error) {
+        console.warn('Supabase folder delete failed', error);
     }
 }
 
@@ -1421,7 +1397,7 @@ function deleteInvoice(invoiceNumber) {
         folders: []
     });
     savedInvoices = savedInvoices.filter(inv => inv.invoiceNumber !== invoiceNumber);
-    markInvoiceDeleted(invoiceNumber);
+    deleteInvoiceFromSupabase(invoiceNumber);
     saveInvoices();
     renderSavedView();
 }
@@ -1456,7 +1432,7 @@ function toggleInvoicePaid(invoiceNumber) {
         return;
     }
     invoice.paid = !invoice.paid;
-    markInvoiceDirty(invoiceNumber);
+    syncInvoiceToSupabase(invoice);
     saveInvoices();
     renderSavedView();
     if (currentInvoiceNumber && currentInvoiceNumber === invoiceNumber) {
@@ -1592,8 +1568,8 @@ function deleteFolder(folderId) {
     });
     savedFolders = savedFolders.filter(f => !folderIdSet.has(String(f.id)));
     savedInvoices = savedInvoices.filter(inv => !folderIdSet.has(String(inv.folderId)));
-    deletedFolders.forEach(deleted => markFolderDeleted(deleted.id));
-    deletedInvoices.forEach(deleted => markInvoiceDeleted(deleted.invoiceNumber));
+    deletedFolders.forEach(deleted => deleteFolderFromSupabase(deleted.id));
+    deletedInvoices.forEach(deleted => deleteInvoiceFromSupabase(deleted.invoiceNumber));
     saveFolders();
     saveInvoices();
     if (currentSavedFolderId && folderIds.includes(currentSavedFolderId)) {
@@ -1619,7 +1595,7 @@ function duplicateFolder(folderId) {
         newFolder.parentId = oldFolder.parentId;
         idMap.set(oldId, newFolder.id);
         savedFolders.push(newFolder);
-        markFolderDirty(newFolder.id);
+        syncFolderToSupabase(newFolder);
     });
 
     folderIds.forEach(oldId => {
@@ -1640,7 +1616,7 @@ function duplicateFolder(folderId) {
         newInvoice.invoiceNumber = getNextInvoiceNumber();
         newInvoice.folderId = idMap.get(inv.folderId) || inv.folderId;
         savedInvoices.push(newInvoice);
-        markInvoiceDirty(newInvoice.invoiceNumber);
+        syncInvoiceToSupabase(newInvoice);
     });
 
     saveFolders();
@@ -1662,7 +1638,7 @@ function renameFolder(folderId) {
         return;
     }
     folder.name = trimmed;
-    markFolderDirty(folder.id);
+    syncFolderToSupabase(folder);
     saveFolders();
     renderSavedView();
 }
