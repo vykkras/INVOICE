@@ -1431,6 +1431,10 @@ function duplicateInvoice(invoiceNumber) {
     if (!invoice) {
         return;
     }
+    copyInvoiceAsNew(invoice);
+}
+
+function copyInvoiceAsNew(invoice) {
     const newNumber = getNextInvoiceNumber();
     const copy = {
         ...invoice,
@@ -1440,29 +1444,7 @@ function duplicateInvoice(invoiceNumber) {
             : [],
         paid: false
     };
-    const existingMeta = Array.isArray(invoice.metaFields) ? invoice.metaFields : [];
-    const metaByKey = new Map(existingMeta.map(field => [field.key, field]));
-    const baseMeta = getDefaultMetaFields().map(field => {
-        const existing = metaByKey.get(field.key);
-        const value = field.key === 'invoiceNumber'
-            ? newNumber
-            : field.key === 'invoiceDate'
-            ? (invoice.date || defaultDate)
-            : field.key === 'projectCode'
-            ? (invoice.project || '')
-            : field.key === 'supervisor'
-            ? (invoice.supervisor || '')
-            : field.value;
-        return {
-            ...field,
-            ...(existing ? { label: existing.label, type: existing.type } : {}),
-            value
-        };
-    });
-    const customMeta = existingMeta
-        .filter(field => !['invoiceNumber', 'invoiceDate', 'projectCode', 'supervisor'].includes(field.key))
-        .map(field => ({ ...field }));
-    copy.metaFields = [...baseMeta, ...customMeta];
+    copy.metaFields = buildMetaFieldsForInvoice(copy);
     pendingDuplicate = copy;
     loadInvoice(copy);
     showEditor();
