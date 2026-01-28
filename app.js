@@ -518,6 +518,14 @@ function cloneContainerForPrint() {
             }
             input.removeAttribute('placeholder');
         });
+        const rows = cloned.querySelectorAll('#itemsBody tr');
+        rows.forEach(row => {
+            const qtyInput = row.querySelector('.qty-input');
+            const qty = qtyInput ? parseFloat(qtyInput.value) : 0;
+            if (!qty || qty <= 0) {
+                row.remove();
+            }
+        });
         containerHtml = cloned.outerHTML;
     }
     return containerHtml;
