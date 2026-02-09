@@ -9,6 +9,7 @@ let invoiceData = {
     from: '',
     billTo: '',
     billToAddress: '',
+    notes: '',
     items: [],
     metaFields: []
 };
@@ -402,6 +403,7 @@ function collectInvoiceData() {
         from: document.getElementById('fromCompany').value,
         billTo: document.getElementById('billToCompany').value,
         billToAddress: document.getElementById('billToAddress').value,
+        notes: document.getElementById('invoiceNotes').value,
         items: items,
         metaFields: metaFields,
         paid: savedInvoices.find(inv => inv.invoiceNumber === byKey('invoiceNumber'))?.paid || false
@@ -441,6 +443,7 @@ function loadInvoice(data) {
     document.getElementById('fromCompany').value = data.from;
     document.getElementById('billToCompany').value = data.billTo;
     document.getElementById('billToAddress').value = data.billToAddress;
+    document.getElementById('invoiceNotes').value = data.notes || '';
     
     // Clear existing items
     document.getElementById('itemsBody').innerHTML = '';
@@ -468,6 +471,7 @@ function createNewInvoice() {
         document.getElementById('fromCompany').value = '';
         document.getElementById('billToCompany').value = '';
         document.getElementById('billToAddress').value = '';
+        document.getElementById('invoiceNotes').value = '';
         
         // Clear items
         document.getElementById('itemsBody').innerHTML = '';
@@ -513,6 +517,10 @@ function cloneContainerForPrint() {
                 Array.from(input.options).forEach(option => {
                     option.selected = option.value === value;
                 });
+            } else if (input.tagName.toLowerCase() === 'textarea') {
+                const value = original.value || '';
+                input.value = value;
+                input.textContent = value;
             } else {
                 input.setAttribute('value', original.value || '');
             }
@@ -683,6 +691,7 @@ function startNewInvoiceFromHome() {
     document.getElementById('fromCompany').value = '';
     document.getElementById('billToCompany').value = '';
     document.getElementById('billToAddress').value = '';
+    document.getElementById('invoiceNotes').value = '';
     document.getElementById('itemsBody').innerHTML = '';
     addItem();
     showEditor();
@@ -706,6 +715,7 @@ function startNewInvoiceInSavedFolder() {
     document.getElementById('fromCompany').value = '';
     document.getElementById('billToCompany').value = '';
     document.getElementById('billToAddress').value = '';
+    document.getElementById('invoiceNotes').value = '';
     document.getElementById('itemsBody').innerHTML = '';
     addItem();
     showEditor();
