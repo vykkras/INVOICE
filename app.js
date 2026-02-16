@@ -534,6 +534,11 @@ function cloneContainerForPrint() {
                 row.remove();
             }
         });
+        const notesTextarea = cloned.querySelector('#invoiceNotes');
+        const notesSection = notesTextarea ? notesTextarea.closest('.notes-section') : null;
+        if (notesSection && (!notesTextarea.value || !notesTextarea.value.trim())) {
+            notesSection.remove();
+        }
         containerHtml = cloned.outerHTML;
     }
     return containerHtml;
