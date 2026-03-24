@@ -102,13 +102,11 @@ function saveAsTemplate() {
         savedTemplates[idx] = template;
     } else {
         savedTemplates.push(template);
-        currentTemplateId = id;
     }
     saveTemplatesLocally();
     syncTemplateToSupabase(template);
-    updateTemplateSaveBtn();
     renderSavedView();
-    alert(currentTemplateId === id && idx >= 0 ? 'Template updated!' : 'Template saved!');
+    alert(idx >= 0 ? 'Template updated!' : 'Template saved!');
 }
 
 function editTemplate(templateId) {
