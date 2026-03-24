@@ -146,7 +146,8 @@ function newInvoiceFromTemplate(templateId) {
     if (!template) return;
     closeNewInvoiceDropdown();
     currentTemplateId = null;
-    currentFolderId = currentFolderId || ensureDefaultFolder();
+    currentFolderId = currentSavedFolderId || currentFolderId || ensureDefaultFolder();
+    lastOpenedFolderId = currentFolderId;
     const newNumber = getNextInvoiceNumber();
     currentInvoiceNumber = newNumber;
     const invoiceLike = {
