@@ -759,36 +759,14 @@ ${containerHtml}
 }
 
 function printInvoice() {
-    // Firefox can block window.open; print via a hidden iframe without injected scripts.
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.setAttribute('aria-hidden', 'true');
-
-    const containerHtml = cloneContainerForPrint();
     const metaForPrint = getMetaFieldsFromDOM();
     const projectForPrint = metaForPrint.find(f => f.key === 'projectCode')?.value || '';
     const numberForPrint = metaForPrint.find(f => f.key === 'invoiceNumber')?.value || '';
     const printTitle = [projectForPrint, numberForPrint].filter(Boolean).join(' --- ') || 'Invoice';
-    const html = renderPrintHtml(containerHtml, printTitle);
-
-    document.body.appendChild(iframe);
-    const win = iframe.contentWindow;
-    if (!win) {
-        window.print();
-        iframe.remove();
-        return;
-    }
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    win.print();
-    setTimeout(() => iframe.remove(), 500);
+    const prevTitle = document.title;
+    document.title = printTitle;
+    window.print();
+    document.title = prevTitle;
 }
 
 function printFolderInvoices() {
