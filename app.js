@@ -600,10 +600,16 @@ function collectInvoiceData() {
 
 function saveInvoice() {
     const data = collectInvoiceData();
-    
+
     // Find if invoice already exists
     const existingIndex = savedInvoices.findIndex(inv => inv.invoiceNumber === data.invoiceNumber);
-    
+
+    // Block if that number belongs to a different invoice
+    if (existingIndex >= 0 && data.invoiceNumber !== currentInvoiceNumber) {
+        alert(`Invoice #${data.invoiceNumber} already exists. Change the invoice number before saving.`);
+        return;
+    }
+
     if (existingIndex >= 0) {
         data.folderId = savedInvoices[existingIndex].folderId || currentFolderId || ensureDefaultFolder();
         savedInvoices[existingIndex] = data;
