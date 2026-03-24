@@ -85,18 +85,17 @@ function updateTemplateSaveBtn() {
 }
 
 function saveAsTemplate() {
-    let name;
-    if (currentTemplateId) {
-        const existing = savedTemplates.find(t => t.id === currentTemplateId);
-        name = existing ? existing.name : 'Template';
-    } else {
-        name = prompt('Template name:');
-        if (!name || !name.trim()) return;
-        name = name.trim();
-    }
+    const existing = currentTemplateId ? savedTemplates.find(t => t.id === currentTemplateId) : null;
+    const defaultName = existing ? existing.name : '';
+    const name = prompt('Template name:', defaultName);
+    if (!name || !name.trim()) return;
+    const trimmedName = name.trim();
+
     const data = collectInvoiceData();
-    const id = currentTemplateId || ('template-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
-    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor };
+    // If editing an existing template and name unchanged → update it; otherwise always create new
+    const isUpdate = existing && trimmedName === existing.name;
+    const id = isUpdate ? currentTemplateId : ('template-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+    const template = { id, name: trimmedName, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor };
     const idx = savedTemplates.findIndex(t => t.id === id);
     if (idx >= 0) {
         savedTemplates[idx] = template;
@@ -106,7 +105,7 @@ function saveAsTemplate() {
     saveTemplatesLocally();
     syncTemplateToSupabase(template);
     renderSavedView();
-    alert(idx >= 0 ? 'Template updated!' : 'Template saved!');
+    alert(isUpdate ? 'Template updated!' : 'Template saved!');
 }
 
 function editTemplate(templateId) {
