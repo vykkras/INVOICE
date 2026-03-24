@@ -60,6 +60,17 @@
             <div class="saved-list" id="savedList"></div>
         </div>
 
+        <div class="template-name-dialog" id="templateNameDialog">
+            <div class="template-name-content">
+                <div class="template-name-title">Template name</div>
+                <input type="text" id="templateNameInput" placeholder="e.g. Weekly Report" autocomplete="off" onkeydown="if(event.key==='Enter')confirmSaveTemplate();if(event.key==='Escape')cancelSaveTemplate();">
+                <div class="template-name-actions">
+                    <button type="button" class="btn btn-save" onclick="confirmSaveTemplate()">Save</button>
+                    <button type="button" onclick="cancelSaveTemplate()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div class="move-dialog" id="moveDialog">
             <div class="move-dialog-content">
                 <div class="move-dialog-header">

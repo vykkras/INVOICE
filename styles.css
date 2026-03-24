@@ -540,6 +540,68 @@ body {
     font-size: 14px;
 }
 
+/* ── Template name dialog ────────────────────── */
+
+.template-name-dialog {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.template-name-content {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.18);
+}
+
+.template-name-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #202124;
+}
+
+.template-name-content input {
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.template-name-content input:focus {
+    border-color: #FF6B35;
+}
+
+.template-name-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.template-name-actions button {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #dadce0;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.template-name-actions button:hover {
+    background: #f8f9fa;
+}
+
 /* ── Move dialog ─────────────────────────────── */
 
 .move-dialog {

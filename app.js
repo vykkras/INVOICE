@@ -86,16 +86,22 @@ function updateTemplateSaveBtn() {
 
 function saveAsTemplate() {
     const existing = currentTemplateId ? savedTemplates.find(t => t.id === currentTemplateId) : null;
-    const defaultName = existing ? existing.name : '';
-    const name = prompt('Template name:', defaultName);
-    if (!name || !name.trim()) return;
-    const trimmedName = name.trim();
+    const input = document.getElementById('templateNameInput');
+    input.value = existing ? existing.name : '';
+    document.getElementById('templateNameDialog').style.display = 'flex';
+    setTimeout(() => input.focus(), 50);
+}
 
-    const data = collectInvoiceData();
-    // If editing an existing template and name unchanged → update it; otherwise always create new
-    const isUpdate = existing && trimmedName === existing.name;
+function confirmSaveTemplate() {
+    const name = document.getElementById('templateNameInput').value.trim();
+    if (!name) { document.getElementById('templateNameInput').focus(); return; }
+    cancelSaveTemplate();
+
+    const existing = currentTemplateId ? savedTemplates.find(t => t.id === currentTemplateId) : null;
+    const isUpdate = existing && name === existing.name;
     const id = isUpdate ? currentTemplateId : ('template-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
-    const template = { id, name: trimmedName, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor };
+    const data = collectInvoiceData();
+    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor };
     const idx = savedTemplates.findIndex(t => t.id === id);
     if (idx >= 0) {
         savedTemplates[idx] = template;
@@ -106,6 +112,10 @@ function saveAsTemplate() {
     syncTemplateToSupabase(template);
     renderSavedView();
     alert(isUpdate ? 'Template updated!' : 'Template saved!');
+}
+
+function cancelSaveTemplate() {
+    document.getElementById('templateNameDialog').style.display = 'none';
 }
 
 function editTemplate(templateId) {
