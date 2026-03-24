@@ -762,7 +762,11 @@ function printInvoice() {
     iframe.setAttribute('aria-hidden', 'true');
 
     const containerHtml = cloneContainerForPrint();
-    const html = renderPrintHtml(containerHtml, 'Invoice');
+    const metaForPrint = getMetaFieldsFromDOM();
+    const projectForPrint = metaForPrint.find(f => f.key === 'projectCode')?.value || '';
+    const numberForPrint = metaForPrint.find(f => f.key === 'invoiceNumber')?.value || '';
+    const printTitle = [projectForPrint, numberForPrint].filter(Boolean).join(' --- ') || 'Invoice';
+    const html = renderPrintHtml(containerHtml, printTitle);
 
     document.body.appendChild(iframe);
     const win = iframe.contentWindow;
