@@ -105,6 +105,7 @@ function saveAsTemplate() {
         currentTemplateId = id;
     }
     saveTemplatesLocally();
+    syncTemplateToSupabase(template);
     updateTemplateSaveBtn();
     renderSavedView();
     alert(currentTemplateId === id && idx >= 0 ? 'Template updated!' : 'Template saved!');
@@ -166,6 +167,7 @@ function renameTemplate(templateId) {
     if (!name || !name.trim()) return;
     template.name = name.trim();
     saveTemplatesLocally();
+    syncTemplateToSupabase(template);
     renderSavedView();
 }
 
@@ -177,6 +179,7 @@ function deleteTemplate(templateId) {
         updateTemplateSaveBtn();
     }
     saveTemplatesLocally();
+    deleteTemplateFromSupabase(templateId);
     renderSavedView();
 }
 
@@ -1575,13 +1578,63 @@ async function deleteFolderFromSupabase(folderId) {
     }
 }
 
+async function syncTemplateToSupabase(template) {
+    if (!supabaseClient || !allowSupabaseSync || !template || !template.id) {
+        return;
+    }
+    try {
+        const { error } = await supabaseClient
+            .from('invoice_templates')
+            .upsert(
+                {
+                    workspace_id: WORKSPACE_ID,
+                    id: template.id,
+                    name: template.name || '',
+                    from_company: template.from || '',
+                    bill_to: template.billTo || '',
+                    bill_to_address: template.billToAddress || '',
+                    notes: template.notes || '',
+                    project: template.project || '',
+                    supervisor: template.supervisor || '',
+                    meta_fields: Array.isArray(template.metaFields) ? template.metaFields : [],
+                    items: Array.isArray(template.items) ? template.items : [],
+                    updated_at: new Date().toISOString()
+                },
+                { onConflict: 'workspace_id,id' }
+            );
+        if (error) {
+            console.warn('Supabase template sync failed', error);
+        }
+    } catch (error) {
+        console.warn('Supabase template sync failed', error);
+    }
+}
+
+async function deleteTemplateFromSupabase(templateId) {
+    if (!supabaseClient || !allowSupabaseSync || !templateId) {
+        return;
+    }
+    try {
+        const { error } = await supabaseClient
+            .from('invoice_templates')
+            .delete()
+            .eq('workspace_id', WORKSPACE_ID)
+            .eq('id', templateId);
+        if (error) {
+            console.warn('Supabase template delete failed', error);
+        }
+    } catch (error) {
+        console.warn('Supabase template delete failed', error);
+    }
+}
+
 async function loadStateFromSupabase() {
     if (!supabaseClient) {
         return;
     }
     try {
         const workspaceId = WORKSPACE_ID;
-        const [foldersRes, invoicesRes, itemsRes] = await Promise.all([
+        const [foldersRes, invoicesRes, itemsRes, templatesRes] = await Promise.all([
             supabaseClient
                 .from('invoice_folders')
                 .select('id, name, parent_id')
@@ -1594,7 +1647,11 @@ async function loadStateFromSupabase() {
                 .from('invoice_items')
                 .select('invoice_number, position, description, quantity, rate')
                 .eq('workspace_id', workspaceId)
-                .order('position', { ascending: true })
+                .order('position', { ascending: true }),
+            supabaseClient
+                .from('invoice_templates')
+                .select('id, name, from_company, bill_to, bill_to_address, notes, project, supervisor, meta_fields, items')
+                .eq('workspace_id', workspaceId)
         ]);
         if (foldersRes.error || invoicesRes.error) {
             console.warn('Supabase load failed', foldersRes.error || invoicesRes.error);
@@ -1666,6 +1723,21 @@ async function loadStateFromSupabase() {
         });
         savedFolders = remoteFolders;
         savedInvoices = remoteInvoices;
+        if (!templatesRes.error && Array.isArray(templatesRes.data) && templatesRes.data.length > 0) {
+            savedTemplates = templatesRes.data.map(t => ({
+                id: t.id,
+                name: t.name || '',
+                from: t.from_company || '',
+                billTo: t.bill_to || '',
+                billToAddress: t.bill_to_address || '',
+                notes: t.notes || '',
+                project: t.project || '',
+                supervisor: t.supervisor || '',
+                metaFields: Array.isArray(t.meta_fields) ? t.meta_fields : [],
+                items: Array.isArray(t.items) ? t.items : []
+            }));
+            localStorage.setItem('invoiceTemplates', JSON.stringify(savedTemplates));
+        }
         remoteStateLoaded = true;
         allowSupabaseSync = true;
         localStorage.setItem('invoices', JSON.stringify(savedInvoices));
