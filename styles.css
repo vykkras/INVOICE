@@ -6,67 +6,69 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: #f5f5f5;
-    padding: 20px;
+    background: #f1f3f4;
+    padding: 0;
+    min-height: 100vh;
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
 }
 
+/* ── App bar ─────────────────────────────────── */
+
 .header {
-    background: linear-gradient(135deg, #FF6B35 0%, #E85A2A 100%);
-    color: white;
-    padding: 16px 30px 18px;
-    border-radius: 8px 8px 0 0;
+    background: #fff;
+    color: #202124;
+    padding: 10px 24px;
+    border-bottom: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .logo-section {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
 }
 
 .logo {
-    background: white;
-    padding: 8px 16px;
-    border-radius: 4px;
+    background: #FF6B35;
+    padding: 6px 14px;
+    border-radius: 6px;
     font-weight: bold;
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1.25;
 }
 
 .dc {
-    color: #FF6B35;
+    color: #fff;
 }
 
 .cable {
-    color: #1a1a1a;
+    color: #fff;
 }
 
 .contractor-text {
-    font-size: 9px;
-    color: #666;
+    font-size: 8px;
+    color: rgba(255,255,255,0.85);
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 .invoice-banner {
-    height: 32px;
+    height: 4px;
     background: #FF6B35;
     width: 100%;
-    border: none;
-    color: white;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    cursor: pointer;
 }
 
 .invoice-banner.paid {
@@ -75,97 +77,139 @@ body {
 
 .action-buttons {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    align-items: center;
 }
 
 .invoice-actions {
     display: none;
 }
 
+/* ── Buttons ─────────────────────────────────── */
+
 .btn {
-    padding: 10px 20px;
+    padding: 8px 18px;
     border: none;
-    border-radius: 4px;
+    border-radius: 20px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    transition: all 0.3s;
+    transition: background 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
 }
 
 .btn-new {
-    background: white;
-    color: #FF6B35;
+    background: #FF6B35;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(255,107,53,0.4);
 }
 
 .btn-new:hover {
-    background: #f0f0f0;
-}
-
-.btn-home {
-    background: #1a2332;
-    color: white;
-}
-
-.btn-home:hover {
-    background: #0f1522;
+    background: #e85a2a;
 }
 
 .btn-save {
-    background: #4CAF50;
-    color: white;
+    background: #FF6B35;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(255,107,53,0.4);
 }
 
 .btn-save:hover {
-    background: #45a049;
+    background: #e85a2a;
+}
+
+.btn-home {
+    background: transparent;
+    color: #5f6368;
+    border: 1px solid #dadce0;
+}
+
+.btn-home:hover {
+    background: #f1f3f4;
+}
+
+.btn-folder {
+    background: transparent;
+    color: #5f6368;
+    border: 1px solid #dadce0;
+}
+
+.btn-folder:hover {
+    background: #f1f3f4;
 }
 
 .btn-print {
-    background: #2196F3;
-    color: white;
+    background: transparent;
+    color: #5f6368;
+    border: 1px solid #dadce0;
 }
 
 .btn-print:hover {
-    background: #0b7dda;
+    background: #f1f3f4;
 }
 
-.invoice-content {
-    padding: 30px;
-}
+/* ── Home view ───────────────────────────────── */
 
 .home-content {
-    padding: 40px 30px 60px;
+    padding: 80px 30px;
     display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-height: 60vh;
+    justify-content: center;
+}
+
+.home-hero {
+    margin-bottom: 32px;
 }
 
 .home-hero h1 {
-    font-size: 32px;
-    margin-bottom: 8px;
-    color: #1a1a1a;
+    font-size: 30px;
+    font-weight: 400;
+    margin-bottom: 10px;
+    color: #202124;
 }
 
 .home-hero p {
-    color: #666;
-    max-width: 520px;
+    color: #5f6368;
+    font-size: 15px;
+    max-width: 400px;
+    line-height: 1.6;
 }
 
 .home-actions {
     display: flex;
     gap: 12px;
-    margin: 24px 0 30px;
+    justify-content: center;
 }
 
-.btn-folder {
-    background: #1a2332;
-    color: white;
+.home-actions .btn-new {
+    padding: 10px 24px;
+    font-size: 14px;
+    border-radius: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.btn-folder:hover {
-    background: #0f1522;
+.home-actions .btn-save {
+    padding: 10px 24px;
+    font-size: 14px;
+    border-radius: 24px;
+    background: #fff;
+    color: #3c4043;
+    border: 1px solid #dadce0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
+.home-actions .btn-save:hover {
+    background: #f8f9fa;
+}
+
+/* ── Saved view ──────────────────────────────── */
 
 .saved-view {
     display: none;
-    padding: 30px;
+    padding: 24px 28px;
 }
 
 .saved-toolbar {
@@ -173,35 +217,238 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .saved-breadcrumbs {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
-    color: #666;
-    font-weight: 600;
+    align-items: center;
+    color: #5f6368;
+    font-size: 15px;
 }
 
 .saved-breadcrumbs button {
     background: transparent;
     border: none;
-    color: #1a1a1a;
-    font-weight: 600;
+    color: #202124;
+    font-weight: 500;
+    font-size: 15px;
     cursor: pointer;
-    padding: 0;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.saved-breadcrumbs button:hover {
+    background: #e8eaed;
 }
 
 .saved-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    align-items: center;
 }
 
+/* ── Drive-style file list ───────────────────── */
+
 .saved-list {
-    display: grid;
-    gap: 14px;
+    background: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    overflow: hidden;
 }
+
+.list-section-header {
+    padding: 6px 16px 5px 56px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5f6368;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e8eaed;
+}
+
+.list-section-header:not(:first-child) {
+    border-top: 1px solid #e8eaed;
+}
+
+.saved-item {
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 16px;
+    min-height: 52px;
+    border-bottom: 1px solid #f1f3f4;
+    cursor: pointer;
+    transition: background 0.1s;
+    gap: 0;
+    background: #fff;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+}
+
+.saved-item:last-child {
+    border-bottom: none;
+}
+
+.saved-item:hover {
+    background: #f8f9fa;
+    box-shadow: none;
+    transform: none;
+}
+
+.saved-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.saved-item.drag-over {
+    background: #e8f0fe;
+    border-color: transparent;
+    box-shadow: inset 0 0 0 2px #FF6B35;
+}
+
+/* override any .paid / .unpaid inline backgrounds */
+.saved-item.paid,
+.saved-item.unpaid {
+    background: #fff !important;
+    border-color: #f1f3f4 !important;
+}
+
+.saved-item.paid:hover,
+.saved-item.unpaid:hover {
+    background: #f8f9fa !important;
+}
+
+/* ── Item icon ───────────────────────────────── */
+
+.item-type-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+}
+
+/* ── Item info (name + meta) ─────────────────── */
+
+.saved-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.saved-item-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: #202124;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* keep old class working for folders' title element */
+.saved-item-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: #202124;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.saved-item-meta {
+    display: flex;
+    gap: 20px;
+    color: #5f6368;
+    font-size: 13px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* ── Paid badge ──────────────────────────────── */
+
+.item-paid-badge {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-right: 12px;
+}
+
+.item-paid-badge.is-paid {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.item-paid-badge.is-unpaid {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+/* ── Item actions (hover-reveal) ─────────────── */
+
+.saved-item-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    padding-left: 8px;
+}
+
+.saved-item:hover .saved-item-actions {
+    opacity: 1;
+}
+
+.saved-item-actions button {
+    border: none;
+    background: transparent;
+    color: #5f6368;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.1s;
+}
+
+.saved-item-actions button:hover {
+    background: #e8eaed;
+    color: #202124;
+}
+
+.saved-item-actions .menu {
+    background: transparent;
+    color: #5f6368;
+}
+
+.saved-item-actions .menu:hover {
+    background: #e8eaed;
+    color: #202124;
+}
+
+.saved-item-actions .danger {
+    background: transparent;
+    color: #c5221f;
+}
+
+.saved-item-actions .danger:hover {
+    background: #fce8e6;
+}
+
+/* ── Folder create ───────────────────────────── */
 
 .folder-create {
     display: none;
@@ -212,54 +459,67 @@ body {
 
 .folder-create input {
     width: 240px;
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    padding: 8px 12px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.folder-create input:focus {
+    outline: none;
+    border-color: #FF6B35;
+    box-shadow: 0 0 0 2px rgba(255,107,53,0.15);
 }
 
 .folder-create button {
     border: none;
-    background: #1a2332;
+    background: #FF6B35;
     color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
     cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .folder-create button.secondary {
-    background: #e6e6e6;
-    color: #333;
+    background: #f1f3f4;
+    color: #3c4043;
 }
 
 .folder-create button:hover {
-    background: #0f1522;
+    background: #e85a2a;
 }
 
 .folder-create button.secondary:hover {
-    background: #d8d8d8;
+    background: #e8eaed;
 }
+
+/* ── Undo bar ────────────────────────────────── */
 
 .undo-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 10px 12px;
-    background: #fff4e9;
-    border: 1px solid #ffd3b0;
+    padding: 10px 14px;
+    background: #fff;
+    border: 1px solid #dadce0;
     border-radius: 8px;
-    margin-bottom: 16px;
-    color: #7a3a08;
-    font-weight: 600;
+    margin-bottom: 14px;
+    color: #3c4043;
+    font-size: 13px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .undo-bar button {
     border: none;
-    background: #ff6b35;
+    background: #FF6B35;
     color: white;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 6px;
     cursor: pointer;
+    font-size: 13px;
 }
 
 .undo-bar button:hover {
@@ -271,123 +531,21 @@ body {
     cursor: not-allowed;
 }
 
-.saved-item {
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    cursor: grab;
-    transition: all 0.2s ease;
-    background: #fff;
-}
-
-.saved-item.paid {
-    border-color: #cfe9d3 !important;
-    background: #f4fbf5 !important;
-}
-
-.saved-item.unpaid {
-    border-color: #f4e1dd !important;
-    background: #fff7f5 !important;
-}
-
-.saved-item-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.saved-item-actions button {
-    border: none;
-    background: #f2f2f2;
-    color: #333;
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.saved-item-actions button:hover {
-    background: #e6e6e6;
-}
-
-.saved-item-actions .menu {
-    background: #eef1f5;
-    color: #1a1a1a;
-}
-
-.saved-item-actions .menu:hover {
-    background: #e3e7ed;
-}
-
-.saved-item-actions .danger {
-    background: #ffebe6;
-    color: #a6261a;
-}
-
-.saved-item-actions .danger:hover {
-    background: #ffd9cf;
-}
-
-.saved-item.dragging {
-    opacity: 0.6;
-    cursor: grabbing;
-}
-
-.saved-item:hover {
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    transform: translateY(-2px);
-}
-
-.saved-item.drag-over {
-    border-color: #FF6B35;
-    box-shadow: 0 0 0 2px rgba(255,107,53,0.2);
-}
-
-.saved-item-title {
-    font-weight: 700;
-    color: #1a1a1a;
-}
-
-.saved-item-meta {
-    display: flex;
-    gap: 12px;
-    color: #666;
-    font-size: 13px;
-}
-
-.invoice-list-item {
-    background: white;
-    padding: 15px;
-    border: 1px solid #eee;
-    border-radius: 4px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.invoice-list-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transform: translateY(-2px);
-}
-
-.invoice-list-item.dragging {
-    opacity: 0.6;
-}
+/* ── Empty state ─────────────────────────────── */
 
 .invoice-empty {
-    color: #888;
+    padding: 48px 20px;
+    text-align: center;
+    color: #9aa0a6;
     font-size: 14px;
 }
+
+/* ── Move dialog ─────────────────────────────── */
 
 .move-dialog {
     position: fixed;
     inset: 0;
-    background: rgba(17,24,39,0.45);
+    background: rgba(0,0,0,0.32);
     display: none;
     align-items: center;
     justify-content: center;
@@ -404,7 +562,7 @@ body {
     width: min(520px, 92vw);
     max-height: 80vh;
     overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
 
 .move-dialog-header {
@@ -412,12 +570,13 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 16px 18px;
-    border-bottom: 1px solid #eef1f5;
+    border-bottom: 1px solid #e8eaed;
 }
 
 .move-dialog-title {
-    font-weight: 700;
-    color: #1a1a1a;
+    font-weight: 600;
+    color: #202124;
+    font-size: 15px;
 }
 
 .move-dialog-close {
@@ -425,6 +584,13 @@ body {
     background: transparent;
     font-size: 16px;
     cursor: pointer;
+    color: #5f6368;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.move-dialog-close:hover {
+    background: #f1f3f4;
 }
 
 .move-dialog-breadcrumbs {
@@ -432,15 +598,15 @@ body {
     gap: 6px;
     flex-wrap: wrap;
     padding: 12px 18px 0;
-    color: #6b7280;
+    color: #5f6368;
     font-size: 13px;
 }
 
 .move-dialog-breadcrumbs button {
     background: transparent;
     border: none;
-    color: #1a1a1a;
-    font-weight: 600;
+    color: #202124;
+    font-weight: 500;
     cursor: pointer;
     padding: 0;
 }
@@ -448,25 +614,35 @@ body {
 .move-dialog-list {
     padding: 12px 18px 18px;
     display: grid;
-    gap: 10px;
+    gap: 8px;
     max-height: 60vh;
     overflow: auto;
 }
 
 .move-dialog-item {
-    border: 1px solid #e6eaf0;
+    border: 1px solid #e8eaed;
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     cursor: pointer;
+    font-size: 14px;
+    color: #202124;
+    transition: background 0.1s, border-color 0.1s;
 }
 
 .move-dialog-item:hover {
-    border-color: #ff6b35;
-    box-shadow: 0 0 0 2px rgba(255,107,53,0.15);
+    border-color: #FF6B35;
+    background: #fff5f1;
+}
+
+/* ── Invoice editor ──────────────────────────── */
+
+.invoice-content {
+    padding: 30px;
+    background: #fff;
 }
 
 .invoice-header-section {
@@ -487,7 +663,7 @@ body {
 .invoice-title {
     font-size: 38px;
     font-weight: 700;
-    color: #1a1a1a;
+    color: #202124;
     letter-spacing: 0.5px;
     margin-top: 0;
     margin-bottom: 10px;
@@ -570,8 +746,8 @@ body {
 
 .btn-delete-meta {
     border: none;
-    background: #ffebe6;
-    color: #a6261a;
+    background: #fce8e6;
+    color: #c5221f;
     padding: 6px 10px;
     border-radius: 6px;
     cursor: pointer;
@@ -589,7 +765,7 @@ body {
     align-items: center;
     gap: 20px;
     padding: 10px 12px;
-    background: #f1f1f1;
+    background: #f1f3f4;
     border-radius: 4px;
     font-weight: 600;
 }
@@ -710,9 +886,9 @@ select:focus {
     text-align: right;
 }
 
-    .items-table tbody tr {
-        border-bottom: none;
-    }
+.items-table tbody tr {
+    border-bottom: none;
+}
 
 .items-table tbody tr:hover {
     background: #f9f9f9;
@@ -837,6 +1013,8 @@ select:focus {
     color: #FF6B35;
 }
 
+/* ── Print styles ────────────────────────────── */
+
 @media print {
     @page {
         size: letter;
@@ -860,6 +1038,8 @@ select:focus {
         color: #111;
         padding: 0 0 20px;
         border-radius: 0;
+        border-bottom: none;
+        position: static;
     }
 
     .container {
@@ -877,6 +1057,12 @@ select:focus {
 
     .invoice-content {
         padding: 0;
+    }
+
+    .invoice-banner {
+        display: block;
+        height: 12px;
+        margin: 0 0 18px;
     }
 
     .invoice-header-section {
@@ -989,6 +1175,9 @@ select:focus {
         gap: 10px;
     }
 
+    .dc { color: #FF6B35; }
+    .cable { color: #1a1a1a; }
+
     .contractor-text {
         color: #999;
     }
@@ -1079,11 +1268,14 @@ select:focus {
     font-weight: 500;
 }
 
+/* ── Responsive ──────────────────────────────── */
+
 @media (max-width: 900px) {
     .header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 12px;
+        gap: 10px;
+        padding: 12px 16px;
     }
 
     .action-buttons {
@@ -1156,8 +1348,8 @@ select:focus {
     }
 
     .logo {
-        font-size: 18px;
-        padding: 6px 12px;
+        font-size: 16px;
+        padding: 5px 10px;
     }
 
     .invoice-title {
@@ -1176,14 +1368,17 @@ select:focus {
     }
 
     .saved-item {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        min-height: auto;
+        gap: 8px;
     }
 
     .saved-item-actions {
-        width: 100%;
-        justify-content: flex-start;
+        opacity: 1;
+        padding-left: 0;
         flex-wrap: wrap;
+        width: 100%;
     }
 
     .items-actions {

@@ -871,9 +871,16 @@ function renderSavedView() {
         return;
     }
 
+    if (foldersHere.length > 0) {
+        const sec = document.createElement('div');
+        sec.className = 'list-section-header';
+        sec.textContent = 'Folders';
+        list.appendChild(sec);
+    }
+
     foldersHere.forEach(folder => {
         const item = document.createElement('div');
-        item.className = 'saved-item';
+        item.className = 'saved-item folder-item';
         item.dataset.folderId = folder.id;
         item.onclick = () => {
             if (suppressClick) {
@@ -893,6 +900,10 @@ function renderSavedView() {
             startManualDrag(item, 'folder', folder.id, event);
         });
 
+        const icon = document.createElement('div');
+        icon.className = 'item-type-icon';
+        icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#FF6B35" xmlns="http://www.w3.org/2000/svg"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>';
+
         const title = document.createElement('div');
         title.className = 'saved-item-title';
         title.textContent = folder.name;
@@ -905,9 +916,14 @@ function renderSavedView() {
         const countSpan = document.createElement('span');
         countSpan.textContent = `${count} invoice${count === 1 ? '' : 's'}`;
         const totalSpan = document.createElement('span');
-        totalSpan.textContent = `Total: ${formatCurrency(total)}`;
+        totalSpan.textContent = formatCurrency(total);
         meta.appendChild(countSpan);
         meta.appendChild(totalSpan);
+
+        const info = document.createElement('div');
+        info.className = 'saved-item-info';
+        info.appendChild(title);
+        info.appendChild(meta);
 
         const actions = document.createElement('div');
         actions.className = 'saved-item-actions';
@@ -939,17 +955,22 @@ function renderSavedView() {
         actions.appendChild(duplicateBtn);
         actions.appendChild(deleteBtn);
 
-        item.appendChild(title);
-        item.appendChild(meta);
+        item.appendChild(icon);
+        item.appendChild(info);
         item.appendChild(actions);
         list.appendChild(item);
     });
 
+    if (invoicesHere.length > 0) {
+        const sec = document.createElement('div');
+        sec.className = 'list-section-header';
+        sec.textContent = 'Invoices';
+        list.appendChild(sec);
+    }
+
     invoicesHere.forEach(invoice => {
         const item = document.createElement('div');
-        item.className = `saved-item ${invoice.paid ? 'paid' : 'unpaid'}`;
-        item.style.backgroundColor = invoice.paid ? '#cfe8d2' : '#fff7f5';
-        item.style.borderColor = invoice.paid ? '#5aa86a' : '#f4e1dd';
+        item.className = `saved-item invoice-item ${invoice.paid ? 'paid' : 'unpaid'}`;
         item.dataset.invoiceNumber = invoice.invoiceNumber;
         item.onclick = () => {
             if (suppressClick) {
@@ -970,20 +991,32 @@ function renderSavedView() {
             startManualDrag(item, 'invoice', invoice.invoiceNumber, event);
         });
 
+        const icon = document.createElement('div');
+        icon.className = 'item-type-icon';
+        icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#5f6368" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
+
         const title = document.createElement('div');
         title.className = 'saved-item-title';
-        const projectName = invoice.project || 'No project';
-        const invoiceNumber = invoice.invoiceNumber || '';
-        title.textContent = `Project: ${projectName} -- Invoice #: ${invoiceNumber}`;
+        const clientName = invoice.billTo || invoice.project || '—';
+        title.textContent = `#${invoice.invoiceNumber} · ${clientName}`;
 
         const meta = document.createElement('div');
         meta.className = 'saved-item-meta';
-        const project = document.createElement('span');
-        project.textContent = invoice.project || 'No project';
         const date = document.createElement('span');
         date.textContent = invoice.date || '';
-        meta.appendChild(project);
+        const amountSpan = document.createElement('span');
+        amountSpan.textContent = formatCurrency(getInvoiceTotal(invoice));
         meta.appendChild(date);
+        meta.appendChild(amountSpan);
+
+        const info = document.createElement('div');
+        info.className = 'saved-item-info';
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        const badge = document.createElement('div');
+        badge.className = `item-paid-badge ${invoice.paid ? 'is-paid' : 'is-unpaid'}`;
+        badge.textContent = invoice.paid ? 'Paid' : 'Unpaid';
 
         const actions = document.createElement('div');
         actions.className = 'saved-item-actions';
@@ -996,7 +1029,7 @@ function renderSavedView() {
         };
 
         const paidBtn = document.createElement('button');
-        paidBtn.textContent = invoice.paid ? 'Paid' : 'Unpaid';
+        paidBtn.textContent = invoice.paid ? 'Mark Unpaid' : 'Mark Paid';
         paidBtn.onclick = event => {
             event.stopPropagation();
             toggleInvoicePaid(invoice.invoiceNumber);
@@ -1004,7 +1037,7 @@ function renderSavedView() {
 
         const moveBtn = document.createElement('button');
         moveBtn.className = 'menu';
-        moveBtn.textContent = '⋯';
+        moveBtn.textContent = 'Move';
         moveBtn.onclick = event => {
             event.stopPropagation();
             openMoveDialog(invoice.invoiceNumber);
@@ -1023,8 +1056,9 @@ function renderSavedView() {
         actions.appendChild(paidBtn);
         actions.appendChild(deleteBtn);
 
-        item.appendChild(title);
-        item.appendChild(meta);
+        item.appendChild(icon);
+        item.appendChild(info);
+        item.appendChild(badge);
         item.appendChild(actions);
         list.appendChild(item);
     });
