@@ -19,8 +19,9 @@
             <div class="action-buttons invoice-actions">
                 <button class="btn btn-home" onclick="goHome()">🏠 Home</button>
                 <button class="btn btn-folder" type="button" onclick="goBackToFolder()">⬅ Back</button>
-                <button class="btn btn-new" onclick="createNewInvoice()">+ New Invoice</button>
+                <button class="btn btn-new" onclick="showNewInvoiceDropdown(this,'editor')">+ New ▾</button>
                 <button class="btn btn-save" onclick="saveInvoice()">💾 Save</button>
+                <button class="btn btn-template" id="saveTemplateBtn" type="button" onclick="saveAsTemplate()">Save as Template</button>
                 <button class="btn btn-print" id="printBtnFresh" type="button" onclick="printInvoice()">🖨️ Print</button>
             </div>
         </div>
@@ -32,7 +33,7 @@
                 <p>Create new invoices or jump back into saved work.</p>
             </div>
             <div class="home-actions">
-                <button class="btn btn-new" onclick="startNewInvoiceFromHome()">+ New Invoice</button>
+                <button class="btn btn-new" onclick="showNewInvoiceDropdown(this,'home')">+ New Invoice ▾</button>
                 <button class="btn btn-save" onclick="openSavedInvoicesView()">Saved Invoices</button>
             </div>
         </div>
@@ -41,7 +42,7 @@
             <div class="saved-toolbar">
                 <div class="saved-breadcrumbs" id="savedBreadcrumbs"></div>
                 <div class="saved-actions">
-                    <button class="btn btn-new" type="button" onclick="startNewInvoiceInSavedFolder()">+ New Invoice</button>
+                    <button class="btn btn-new" type="button" onclick="showNewInvoiceDropdown(this,'saved')">+ New Invoice ▾</button>
                     <button class="btn btn-folder" type="button" onclick="openFolderCreator()">+ New Folder</button>
                     <button class="btn btn-print" type="button" onclick="printFolderInvoices()">🖨️ Print Folder</button>
                     <button class="btn btn-home" type="button" onclick="goHome()">🏠 Home</button>
@@ -148,6 +149,15 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- New invoice dropdown (shared across all contexts) -->
+    <div class="new-invoice-dropdown" id="newInvoiceDropdown">
+        <button class="dropdown-item dropdown-blank" onclick="startBlankInvoice()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#5f6368" style="flex-shrink:0"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            Blank Invoice
+        </button>
+        <div id="templateDropdownList"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

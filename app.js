@@ -31,6 +31,9 @@ let supabaseSyncTimer = null;
 let remoteStateLoaded = false;
 let allowSupabaseSync = false;
 let pendingDuplicate = null;
+let savedTemplates = JSON.parse(localStorage.getItem('invoiceTemplates') || '[]');
+let currentTemplateId = null;
+let _newInvoiceContext = 'home';
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -64,6 +67,174 @@ function saveDeleteHistory() {
     }
     scheduleSupabaseSync();
 }
+// ── Templates ────────────────────────────────────────────────────────────────
+
+function saveTemplatesLocally() {
+    try {
+        localStorage.setItem('invoiceTemplates', JSON.stringify(savedTemplates));
+    } catch (e) {
+        console.error('Failed to save templates:', e);
+        alert('Warning: Could not save templates. Storage may be full.');
+    }
+}
+
+function updateTemplateSaveBtn() {
+    const btn = document.getElementById('saveTemplateBtn');
+    if (!btn) return;
+    btn.textContent = currentTemplateId ? 'Update Template' : 'Save as Template';
+}
+
+function saveAsTemplate() {
+    let name;
+    if (currentTemplateId) {
+        const existing = savedTemplates.find(t => t.id === currentTemplateId);
+        name = existing ? existing.name : 'Template';
+    } else {
+        name = prompt('Template name:');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+    }
+    const data = collectInvoiceData();
+    const id = currentTemplateId || ('template-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor };
+    const idx = savedTemplates.findIndex(t => t.id === id);
+    if (idx >= 0) {
+        savedTemplates[idx] = template;
+    } else {
+        savedTemplates.push(template);
+        currentTemplateId = id;
+    }
+    saveTemplatesLocally();
+    updateTemplateSaveBtn();
+    renderSavedView();
+    alert(currentTemplateId === id && idx >= 0 ? 'Template updated!' : 'Template saved!');
+}
+
+function editTemplate(templateId) {
+    const template = savedTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    currentTemplateId = templateId;
+    currentInvoiceNumber = null;
+    const invoiceLike = {
+        invoiceNumber: '',
+        date: '',
+        project: template.project || '',
+        supervisor: template.supervisor || '',
+        from: template.from || '',
+        billTo: template.billTo || '',
+        billToAddress: template.billToAddress || '',
+        notes: template.notes || '',
+        items: Array.isArray(template.items) ? template.items.map(i => ({ ...i })) : [],
+        metaFields: Array.isArray(template.metaFields) ? template.metaFields.map(f => ({ ...f })) : [],
+        folderId: null
+    };
+    loadInvoice(invoiceLike);
+    updateTemplateSaveBtn();
+    showEditor();
+}
+
+function newInvoiceFromTemplate(templateId) {
+    const template = savedTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    closeNewInvoiceDropdown();
+    currentTemplateId = null;
+    currentFolderId = currentFolderId || ensureDefaultFolder();
+    const newNumber = getNextInvoiceNumber();
+    currentInvoiceNumber = newNumber;
+    const invoiceLike = {
+        invoiceNumber: newNumber,
+        date: new Date().toISOString().split('T')[0],
+        project: template.project || '',
+        supervisor: template.supervisor || '',
+        from: template.from || '',
+        billTo: template.billTo || '',
+        billToAddress: template.billToAddress || '',
+        notes: template.notes || '',
+        items: Array.isArray(template.items) ? JSON.parse(JSON.stringify(template.items)) : [],
+        metaFields: Array.isArray(template.metaFields) ? template.metaFields.map(f => ({ ...f })) : [],
+        folderId: currentFolderId
+    };
+    loadInvoice(invoiceLike);
+    updateTemplateSaveBtn();
+    showEditor();
+}
+
+function renameTemplate(templateId) {
+    const template = savedTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    const name = prompt('Template name:', template.name);
+    if (!name || !name.trim()) return;
+    template.name = name.trim();
+    saveTemplatesLocally();
+    renderSavedView();
+}
+
+function deleteTemplate(templateId) {
+    if (!confirm('Delete this template?')) return;
+    savedTemplates = savedTemplates.filter(t => t.id !== templateId);
+    if (currentTemplateId === templateId) {
+        currentTemplateId = null;
+        updateTemplateSaveBtn();
+    }
+    saveTemplatesLocally();
+    renderSavedView();
+}
+
+// ── New invoice dropdown ──────────────────────────────────────────────────────
+
+function showNewInvoiceDropdown(btn, context) {
+    _newInvoiceContext = context || 'home';
+    const dropdown = document.getElementById('newInvoiceDropdown');
+    const list = document.getElementById('templateDropdownList');
+    list.innerHTML = '';
+    if (savedTemplates.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'dropdown-empty';
+        empty.textContent = 'No templates saved yet';
+        list.appendChild(empty);
+    } else {
+        const divider = document.createElement('div');
+        divider.className = 'dropdown-divider';
+        divider.textContent = 'From template';
+        list.appendChild(divider);
+        savedTemplates.forEach(template => {
+            const item = document.createElement('button');
+            item.className = 'dropdown-item';
+            item.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="#FF6B35" style="flex-shrink:0"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>' + document.createTextNode('').nodeValue;
+            const label = document.createTextNode(template.name);
+            item.appendChild(label);
+            item.onclick = () => newInvoiceFromTemplate(template.id);
+            list.appendChild(item);
+        });
+    }
+    const rect = btn.getBoundingClientRect();
+    dropdown.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.classList.add('open');
+    setTimeout(() => {
+        document.addEventListener('click', closeNewInvoiceDropdown, { once: true });
+    }, 0);
+}
+
+function closeNewInvoiceDropdown() {
+    document.getElementById('newInvoiceDropdown')?.classList.remove('open');
+}
+
+function startBlankInvoice() {
+    closeNewInvoiceDropdown();
+    currentTemplateId = null;
+    updateTemplateSaveBtn();
+    if (_newInvoiceContext === 'saved') {
+        startNewInvoiceInSavedFolder();
+    } else if (_newInvoiceContext === 'editor') {
+        createNewInvoice();
+    } else {
+        startNewInvoiceFromHome();
+    }
+}
+
+// ── End templates ─────────────────────────────────────────────────────────────
+
 function createFolderData(name) {
     return {
         id: 'folder-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -443,7 +614,8 @@ function saveInvoice() {
     }
     
     saveInvoices();
-    
+    currentTemplateId = null;
+    updateTemplateSaveBtn();
     alert('Invoice saved successfully!');
     renderSavedInvoices();
 }
@@ -469,9 +641,10 @@ function loadInvoice(data) {
 function createNewInvoice() {
     if (confirm('Create a new invoice? Any unsaved changes will be lost.')) {
         // Generate new invoice number
+        currentTemplateId = null;
         const newNumber = getNextInvoiceNumber();
         currentInvoiceNumber = newNumber;
-        
+
         currentFolderId = currentFolderId || ensureDefaultFolder();
         const fields = getDefaultMetaFields().map(field => ({
             ...field,
@@ -695,6 +868,7 @@ function printFolderInvoices() {
 
 function startNewInvoiceFromHome() {
     // Create a fresh invoice without a confirm dialog from the home view.
+    currentTemplateId = null;
     const newNumber = getNextInvoiceNumber();
     currentInvoiceNumber = newNumber;
     currentFolderId = ensureDefaultFolder();
@@ -720,7 +894,8 @@ function startNewInvoiceInSavedFolder() {
     const targetFolderId = currentSavedFolderId || ensureDefaultFolder();
     currentFolderId = targetFolderId;
     lastOpenedFolderId = targetFolderId;
-    const newNumber = (parseInt(getMetaFieldsFromDOM().find(field => field.key === 'invoiceNumber')?.value || '0', 10) + 1).toString().padStart(4, '0');
+    currentTemplateId = null;
+    const newNumber = getNextInvoiceNumber();
     currentInvoiceNumber = newNumber;
     const fields = getDefaultMetaFields().map(field => ({
         ...field,
@@ -862,13 +1037,73 @@ function renderSavedView() {
     const currentId = currentSavedFolderId ? String(currentSavedFolderId) : null;
     const foldersHere = savedFolders.filter(folder => String(folder.parentId || '') === String(currentId || ''));
     const invoicesHere = savedInvoices.filter(inv => String(inv.folderId || '') === String(currentId || ''));
+    const templatesVisible = !currentSavedFolderId && savedTemplates.length > 0;
 
-    if (!foldersHere.length && !invoicesHere.length) {
+    if (!foldersHere.length && !invoicesHere.length && !templatesVisible) {
         const empty = document.createElement('div');
         empty.className = 'invoice-empty';
         empty.textContent = 'No items here yet.';
         list.appendChild(empty);
         return;
+    }
+
+    // ── Templates section (root level only) ──────────────────────────────────
+    if (templatesVisible) {
+        const sec = document.createElement('div');
+        sec.className = 'list-section-header';
+        sec.textContent = 'Templates';
+        list.appendChild(sec);
+
+        savedTemplates.forEach(template => {
+            const item = document.createElement('div');
+            item.className = 'saved-item template-item';
+            item.onclick = () => {
+                if (suppressClick) { suppressClick = false; return; }
+                editTemplate(template.id);
+            };
+
+            const icon = document.createElement('div');
+            icon.className = 'item-type-icon';
+            icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#FF6B35" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>';
+
+            const title = document.createElement('div');
+            title.className = 'saved-item-title';
+            title.textContent = template.name;
+
+            const info = document.createElement('div');
+            info.className = 'saved-item-info';
+            info.appendChild(title);
+
+            const actions = document.createElement('div');
+            actions.className = 'saved-item-actions';
+
+            const useBtn = document.createElement('button');
+            useBtn.textContent = 'Use';
+            useBtn.onclick = event => {
+                event.stopPropagation();
+                currentFolderId = currentFolderId || ensureDefaultFolder();
+                newInvoiceFromTemplate(template.id);
+            };
+
+            const renameBtn = document.createElement('button');
+            renameBtn.className = 'menu';
+            renameBtn.textContent = 'Rename';
+            renameBtn.onclick = event => { event.stopPropagation(); renameTemplate(template.id); };
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'danger';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = event => { event.stopPropagation(); deleteTemplate(template.id); };
+
+            actions.appendChild(useBtn);
+            actions.appendChild(renameBtn);
+            actions.appendChild(deleteBtn);
+
+            item.appendChild(icon);
+            item.appendChild(info);
+            item.appendChild(actions);
+            list.appendChild(item);
+        });
     }
 
     if (foldersHere.length > 0) {
@@ -977,6 +1212,8 @@ function renderSavedView() {
                 suppressClick = false;
                 return;
             }
+            currentTemplateId = null;
+            updateTemplateSaveBtn();
             loadInvoice(invoice);
             showEditor();
         };
