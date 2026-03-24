@@ -997,8 +997,7 @@ function renderSavedView() {
 
         const title = document.createElement('div');
         title.className = 'saved-item-title';
-        const clientName = invoice.billTo || invoice.project || '—';
-        title.textContent = `#${invoice.invoiceNumber} · ${clientName}`;
+        title.textContent = `#${invoice.invoiceNumber} · ${invoice.project || '—'}`;
 
         const meta = document.createElement('div');
         meta.className = 'saved-item-meta';
