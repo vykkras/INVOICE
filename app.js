@@ -37,17 +37,31 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const WORKSPACE_ID = 'default';
 
 function saveFolders() {
-    localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
+    try {
+        localStorage.setItem('invoiceFolders', JSON.stringify(savedFolders));
+    } catch (e) {
+        console.error('Failed to save folders to localStorage:', e);
+        alert('Warning: Could not save folders. Storage may be full.');
+    }
     scheduleSupabaseSync();
 }
 
 function saveInvoices() {
-    localStorage.setItem('invoices', JSON.stringify(savedInvoices));
+    try {
+        localStorage.setItem('invoices', JSON.stringify(savedInvoices));
+    } catch (e) {
+        console.error('Failed to save invoices to localStorage:', e);
+        alert('Warning: Could not save invoices. Storage may be full.');
+    }
     scheduleSupabaseSync();
 }
 
 function saveDeleteHistory() {
-    localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
+    try {
+        localStorage.setItem('invoiceDeleteHistory', JSON.stringify(deleteHistory));
+    } catch (e) {
+        console.error('Failed to save delete history to localStorage:', e);
+    }
     scheduleSupabaseSync();
 }
 function createFolderData(name) {
@@ -440,9 +454,9 @@ function loadInvoice(data) {
     currentInvoiceNumber = data.invoiceNumber || null;
     const fields = buildMetaFieldsForInvoice(data);
     renderMetaFields(fields);
-    document.getElementById('fromCompany').value = data.from;
-    document.getElementById('billToCompany').value = data.billTo;
-    document.getElementById('billToAddress').value = data.billToAddress;
+    document.getElementById('fromCompany').value = data.from || '';
+    document.getElementById('billToCompany').value = data.billTo || '';
+    document.getElementById('billToAddress').value = data.billToAddress || '';
     document.getElementById('invoiceNotes').value = data.notes || '';
     
     // Clear existing items
@@ -455,7 +469,7 @@ function loadInvoice(data) {
 function createNewInvoice() {
     if (confirm('Create a new invoice? Any unsaved changes will be lost.')) {
         // Generate new invoice number
-        const newNumber = (parseInt(getMetaFieldsFromDOM().find(field => field.key === 'invoiceNumber')?.value || '0', 10) + 1).toString().padStart(4, '0');
+        const newNumber = getNextInvoiceNumber();
         currentInvoiceNumber = newNumber;
         
         currentFolderId = currentFolderId || ensureDefaultFolder();
@@ -1188,6 +1202,7 @@ async function syncInvoiceToSupabase(invoice) {
                     from_company: invoice.from || '',
                     bill_to: invoice.billTo || '',
                     bill_to_address: invoice.billToAddress || '',
+                    notes: invoice.notes || '',
                     meta_fields: Array.isArray(invoice.metaFields) ? invoice.metaFields : [],
                     paid: Boolean(invoice.paid),
                     folder_id: invoice.folderId ? String(invoice.folderId) : null,
@@ -1303,7 +1318,7 @@ async function loadStateFromSupabase() {
                 .eq('workspace_id', workspaceId),
             supabaseClient
                 .from('invoices')
-                .select('invoice_number, date, project, supervisor, from_company, bill_to, bill_to_address, meta_fields, paid, folder_id')
+                .select('invoice_number, date, project, supervisor, from_company, bill_to, bill_to_address, notes, meta_fields, paid, folder_id')
                 .eq('workspace_id', workspaceId),
             supabaseClient
                 .from('invoice_items')
@@ -1361,6 +1376,7 @@ async function loadStateFromSupabase() {
             from: invoice.from_company || '',
             billTo: invoice.bill_to || '',
             billToAddress: invoice.bill_to_address || '',
+            notes: invoice.notes || '',
             items: itemsByInvoice.get(String(invoice.invoice_number || '')) || [],
             metaFields: Array.isArray(invoice.meta_fields) ? invoice.meta_fields : [],
             paid: Boolean(invoice.paid),
@@ -1635,7 +1651,7 @@ function duplicateFolder(folderId) {
 
     const invoicesToCopy = savedInvoices.filter(inv => folderIds.includes(inv.folderId));
     invoicesToCopy.forEach(inv => {
-        const newInvoice = { ...inv };
+        const newInvoice = JSON.parse(JSON.stringify(inv));
         newInvoice.invoiceNumber = getNextInvoiceNumber();
         newInvoice.folderId = idMap.get(inv.folderId) || inv.folderId;
         savedInvoices.push(newInvoice);
