@@ -1168,7 +1168,10 @@ select:focus {
     .btn-add-item,
     .btn-clear-items,
     .btn-add-meta,
-    .btn-delete-meta {
+    .btn-delete-meta,
+    .move-dialog,
+    .template-name-dialog,
+    .new-invoice-dropdown {
         display: none !important;
     }
 

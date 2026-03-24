@@ -343,12 +343,6 @@ function getInvoiceTotal(invoice) {
     }, 0);
 }
 
-const printBtnFresh = document.getElementById('printBtnFresh');
-if (printBtnFresh) {
-    printBtnFresh.addEventListener('click', () => {
-        printInvoice();
-    });
-}
 
 function showHome() {
     document.getElementById('homeView').style.display = 'block';
@@ -2144,3 +2138,24 @@ loadStateFromSupabase().then(() => {
     renderSavedView();
 });
 showHome();
+
+window.addEventListener('beforeprint', () => {
+    document.querySelectorAll('#itemsBody tr').forEach(row => {
+        const qty = parseFloat(row.querySelector('.qty-input')?.value) || 0;
+        if (!qty || qty <= 0) row.dataset.printHidden = 'true';
+    });
+    document.querySelectorAll('[data-print-hidden]').forEach(el => el.style.display = 'none');
+    const notes = document.getElementById('invoiceNotes');
+    const notesSection = notes?.closest('.notes-section');
+    if (notesSection && (!notes.value || !notes.value.trim())) {
+        notesSection.dataset.printHidden = 'true';
+        notesSection.style.display = 'none';
+    }
+});
+
+window.addEventListener('afterprint', () => {
+    document.querySelectorAll('[data-print-hidden]').forEach(el => {
+        el.style.display = '';
+        delete el.dataset.printHidden;
+    });
+});
