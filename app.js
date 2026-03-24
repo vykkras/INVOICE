@@ -695,7 +695,7 @@ function printFolderInvoices() {
 
 function startNewInvoiceFromHome() {
     // Create a fresh invoice without a confirm dialog from the home view.
-    const newNumber = (parseInt(getMetaFieldsFromDOM().find(field => field.key === 'invoiceNumber')?.value || '0', 10) + 1).toString().padStart(4, '0');
+    const newNumber = getNextInvoiceNumber();
     currentInvoiceNumber = newNumber;
     currentFolderId = ensureDefaultFolder();
     const fields = getDefaultMetaFields().map(field => ({
@@ -1384,6 +1384,15 @@ async function loadStateFromSupabase() {
         }));
         remoteInvoices.forEach(inv => {
             inv.metaFields = buildMetaFieldsForInvoice(inv);
+            // If Supabase has no items for this invoice but localStorage does,
+            // keep the local items — this protects against a failed item sync
+            // (delete succeeded but insert failed) silently wiping rows.
+            if (inv.items.length === 0) {
+                const localInv = savedInvoices.find(l => l.invoiceNumber === inv.invoiceNumber);
+                if (localInv && Array.isArray(localInv.items) && localInv.items.length > 0) {
+                    inv.items = localInv.items;
+                }
+            }
         });
         savedFolders = remoteFolders;
         savedInvoices = remoteInvoices;
