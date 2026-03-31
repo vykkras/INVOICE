@@ -14,6 +14,15 @@ let invoiceData = {
     metaFields: []
 };
 
+// Clear stale data when the user just switched profiles
+if (localStorage.getItem('profileJustSwitched')) {
+    localStorage.removeItem('profileJustSwitched');
+    localStorage.removeItem('invoices');
+    localStorage.removeItem('invoiceFolders');
+    localStorage.removeItem('invoiceTemplates');
+    localStorage.removeItem('invoiceDeleteHistory');
+}
+
 // Load saved invoices from localStorage
 let savedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
 let savedFolders = JSON.parse(localStorage.getItem('invoiceFolders') || '[]');
@@ -63,6 +72,7 @@ function getInitials(name) {
 function selectProfile(profileId) {
     activeProfileId = profileId;
     localStorage.setItem('activeProfileId', profileId);
+    localStorage.setItem('profileJustSwitched', '1');
     window.location.reload();
 }
 
