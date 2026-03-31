@@ -149,7 +149,7 @@ function newInvoiceFromTemplate(templateId) {
     currentTemplateId = null;
     currentFolderId = currentSavedFolderId || currentFolderId || ensureDefaultFolder();
     lastOpenedFolderId = currentFolderId;
-    const newNumber = getNextInvoiceNumber();
+    const newNumber = getNextClientNumber(template.billTo);
     currentInvoiceNumber = newNumber;
     const invoiceLike = {
         invoiceNumber: newNumber,
@@ -318,6 +318,14 @@ function getDescendantFolderIds(folderId) {
     return ids;
 }
 
+// Starting invoice numbers per client.
+// The value is the FIRST number that will be assigned for that client.
+// After that it auto-increments from the highest existing invoice.
+const CLIENT_NUMBER_SEEDS = {
+    'BPS': '0593',
+    'ITG': '033'
+};
+
 function getNextInvoiceNumber() {
     const maxNumber = savedInvoices.reduce((max, invoice) => {
         const num = parseInt(invoice.invoiceNumber, 10);
@@ -327,6 +335,33 @@ function getNextInvoiceNumber() {
         return Math.max(max, num);
     }, 0);
     return String(maxNumber + 1).padStart(4, '0');
+}
+
+function getNextClientNumber(billTo) {
+    if (!billTo || !billTo.trim()) return '0';
+    const key = billTo.trim().toUpperCase();
+
+    const clientInvoices = savedInvoices.filter(inv =>
+        (inv.billTo || '').trim().toUpperCase() === key
+    );
+
+    const seed = CLIENT_NUMBER_SEEDS[key];
+    const seedNum = seed ? parseInt(seed, 10) : 1;
+    const padWidth = seed ? seed.length : 3;
+
+    if (clientInvoices.length === 0) {
+        return String(seedNum).padStart(padWidth, '0');
+    }
+
+    let maxNum = 0;
+    clientInvoices.forEach(inv => {
+        const n = parseInt(inv.invoiceNumber, 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+    });
+
+    // Never go below the seed value
+    const next = Math.max(maxNum + 1, seedNum);
+    return String(next).padStart(padWidth, '0');
 }
 
 function formatCurrency(amount) {
@@ -652,9 +687,8 @@ function loadInvoice(data) {
 
 function createNewInvoice() {
     if (confirm('Create a new invoice? Any unsaved changes will be lost.')) {
-        // Generate new invoice number
         currentTemplateId = null;
-        const newNumber = getNextInvoiceNumber();
+        const newNumber = '0';
         currentInvoiceNumber = newNumber;
 
         currentFolderId = currentFolderId || ensureDefaultFolder();
@@ -863,7 +897,7 @@ function printFolderInvoices() {
 function startNewInvoiceFromHome() {
     // Create a fresh invoice without a confirm dialog from the home view.
     currentTemplateId = null;
-    const newNumber = getNextInvoiceNumber();
+    const newNumber = '0';
     currentInvoiceNumber = newNumber;
     currentFolderId = ensureDefaultFolder();
     const fields = getDefaultMetaFields().map(field => ({
@@ -889,7 +923,7 @@ function startNewInvoiceInSavedFolder() {
     currentFolderId = targetFolderId;
     lastOpenedFolderId = targetFolderId;
     currentTemplateId = null;
-    const newNumber = getNextInvoiceNumber();
+    const newNumber = '0';
     currentInvoiceNumber = newNumber;
     const fields = getDefaultMetaFields().map(field => ({
         ...field,
