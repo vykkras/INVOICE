@@ -416,13 +416,20 @@ function getDescendantFolderIds(folderId) {
     return ids;
 }
 
-// Starting invoice numbers per client.
-// The value is the FIRST number that will be assigned for that client.
-// After that it auto-increments from the highest existing invoice.
+// First invoice number to assign per client.
+// Format determines zero-padding (e.g. '0593' → 4 digits, '033' → 3 digits).
 const CLIENT_NUMBER_SEEDS = {
     'BPS': '0593',
     'ITG': '033'
 };
+
+// Tracks the last assigned number per client, independent of existing invoices.
+// This avoids picking up old globally-numbered invoices as a baseline.
+let clientCounters = JSON.parse(localStorage.getItem('clientCounters') || '{}');
+
+function saveClientCounters() {
+    localStorage.setItem('clientCounters', JSON.stringify(clientCounters));
+}
 
 function getNextInvoiceNumber() {
     const maxNumber = savedInvoices.reduce((max, invoice) => {
@@ -439,26 +446,17 @@ function getNextClientNumber(billTo) {
     if (!billTo || !billTo.trim()) return '0';
     const key = billTo.trim().toUpperCase();
 
-    const clientInvoices = savedInvoices.filter(inv =>
-        (inv.billTo || '').trim().toUpperCase() === key
-    );
-
     const seed = CLIENT_NUMBER_SEEDS[key];
     const seedNum = seed ? parseInt(seed, 10) : 1;
     const padWidth = seed ? seed.length : 3;
 
-    if (clientInvoices.length === 0) {
-        return String(seedNum).padStart(padWidth, '0');
-    }
+    // lastUsed: what was last assigned for this client (or one before the seed)
+    const lastUsed = clientCounters[key] !== undefined ? clientCounters[key] : seedNum - 1;
+    const next = lastUsed + 1;
 
-    let maxNum = 0;
-    clientInvoices.forEach(inv => {
-        const n = parseInt(inv.invoiceNumber, 10);
-        if (!isNaN(n) && n > maxNum) maxNum = n;
-    });
+    clientCounters[key] = next;
+    saveClientCounters();
 
-    // Never go below the seed value
-    const next = Math.max(maxNum + 1, seedNum);
     return String(next).padStart(padWidth, '0');
 }
 
