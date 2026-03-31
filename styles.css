@@ -4,6 +4,159 @@
     box-sizing: border-box;
 }
 
+/* ── Profile picker overlay ──────────────────── */
+
+.profile-picker {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #f1f3f4;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-picker-content {
+    text-align: center;
+    padding: 40px 32px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    min-width: 320px;
+    max-width: 480px;
+    width: 90%;
+}
+
+.profile-picker-title {
+    font-size: 20px;
+    font-weight: 400;
+    color: #202124;
+    margin-bottom: 28px;
+}
+
+.profile-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.profile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: #f8f9fa;
+    border: 2px solid #e8eaed;
+    border-radius: 12px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    min-width: 90px;
+}
+
+.profile-card:hover {
+    border-color: #FF6B35;
+    background: #fff5f1;
+}
+
+.profile-card-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #FF6B35;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.profile-card-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #202124;
+}
+
+.profile-add-btn {
+    background: transparent;
+    border: 2px dashed #dadce0;
+    border-radius: 12px;
+    padding: 16px 20px;
+    min-width: 90px;
+    color: #5f6368;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.profile-add-btn:hover {
+    border-color: #FF6B35;
+    color: #FF6B35;
+}
+
+.profile-create {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.profile-create input {
+    padding: 9px 14px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    flex: 1;
+    max-width: 200px;
+}
+
+.profile-create input:focus {
+    border-color: #FF6B35;
+}
+
+.profile-create button {
+    padding: 9px 18px;
+    background: #FF6B35;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.profile-create button:hover {
+    background: #e85a2a;
+}
+
+/* ── Profile indicator (header avatar) ──────── */
+
+.profile-indicator {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #FF6B35;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    order: -1;
+}
+
+.profile-indicator:hover {
+    background: #e85a2a;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: #f1f3f4;

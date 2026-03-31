@@ -9,7 +9,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo-section">
+            <button class="profile-indicator" id="profileIndicator" onclick="showProfilePicker()"></button>
+        <div class="logo-section">
                 <div class="logo">
                     <span class="dc">DC</span><br>
                     <span class="cable">CABLE</span><br>
@@ -170,6 +171,24 @@
             Blank Invoice
         </button>
         <div id="templateDropdownList"></div>
+    </div>
+
+    <!-- Profile picker -->
+    <div class="profile-picker" id="profilePicker">
+        <div class="profile-picker-content">
+            <div class="logo" style="margin-bottom:24px;display:inline-block">
+                <span class="dc">DC</span><br>
+                <span class="cable">CABLE</span><br>
+                <div class="contractor-text">AUTHORIZED CONTRACTOR</div>
+            </div>
+            <h2 class="profile-picker-title">Who's using the app?</h2>
+            <div class="profile-list" id="profileList"></div>
+            <div class="profile-create" id="profileCreate">
+                <input type="text" id="newProfileName" placeholder="Enter your name" autocomplete="off"
+                    onkeydown="if(event.key==='Enter')submitNewProfile()">
+                <button type="button" onclick="submitNewProfile()">Continue →</button>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

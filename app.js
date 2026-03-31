@@ -38,7 +38,105 @@ let searchQuery = '';
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
-const WORKSPACE_ID = 'default';
+// ── Profiles ──────────────────────────────────────────────────────────────────
+let profiles = JSON.parse(localStorage.getItem('invoiceProfiles') || '[]');
+let activeProfileId = localStorage.getItem('activeProfileId') || null;
+
+function getWorkspaceId() {
+    if (!activeProfileId) return 'default';
+    const p = profiles.find(pr => pr.id === activeProfileId);
+    return p ? p.workspaceId : 'default';
+}
+
+function getActiveProfile() {
+    return profiles.find(p => p.id === activeProfileId) || null;
+}
+
+function saveProfiles() {
+    localStorage.setItem('invoiceProfiles', JSON.stringify(profiles));
+}
+
+function getInitials(name) {
+    return name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('');
+}
+
+function selectProfile(profileId) {
+    activeProfileId = profileId;
+    localStorage.setItem('activeProfileId', profileId);
+    window.location.reload();
+}
+
+function createProfile(name) {
+    if (!name.trim()) return;
+    const id = 'profile-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    // First profile on a device that already has data → inherit 'default' workspace
+    // so existing invoices/folders are not lost.
+    const isFirst = profiles.length === 0;
+    const hasExistingData = savedInvoices.length > 0 || savedFolders.length > 0;
+    const workspaceId = (isFirst && hasExistingData) ? 'default' : id;
+    profiles.push({ id, name: name.trim(), workspaceId });
+    saveProfiles();
+    selectProfile(id);
+}
+
+function submitNewProfile() {
+    const input = document.getElementById('newProfileName');
+    const name = input ? input.value.trim() : '';
+    if (!name) { if (input) input.focus(); return; }
+    createProfile(name);
+}
+
+function updateProfileIndicator() {
+    const el = document.getElementById('profileIndicator');
+    if (!el) return;
+    const p = getActiveProfile();
+    if (p) {
+        el.textContent = getInitials(p.name);
+        el.title = p.name + ' — click to switch';
+    }
+}
+
+function renderProfilePickerUI() {
+    const list = document.getElementById('profileList');
+    const createSection = document.getElementById('profileCreate');
+    if (!list || !createSection) return;
+    list.innerHTML = '';
+
+    if (profiles.length > 0) {
+        createSection.style.display = 'none';
+        profiles.forEach(profile => {
+            const btn = document.createElement('button');
+            btn.className = 'profile-card';
+            btn.onclick = () => selectProfile(profile.id);
+            const avatar = document.createElement('div');
+            avatar.className = 'profile-card-avatar';
+            avatar.textContent = getInitials(profile.name);
+            const nameEl = document.createElement('div');
+            nameEl.className = 'profile-card-name';
+            nameEl.textContent = profile.name;
+            btn.appendChild(avatar);
+            btn.appendChild(nameEl);
+            list.appendChild(btn);
+        });
+        const addBtn = document.createElement('button');
+        addBtn.className = 'profile-add-btn';
+        addBtn.textContent = '+ New Profile';
+        addBtn.onclick = () => {
+            createSection.style.display = 'flex';
+            setTimeout(() => document.getElementById('newProfileName')?.focus(), 50);
+        };
+        list.appendChild(addBtn);
+    } else {
+        createSection.style.display = 'flex';
+        setTimeout(() => document.getElementById('newProfileName')?.focus(), 100);
+    }
+}
+
+function showProfilePicker() {
+    renderProfilePickerUI();
+    document.getElementById('profilePicker').style.display = 'flex';
+}
+// ── End profiles ───────────────────────────────────────────────────────────────
 
 function saveFolders() {
     try {
@@ -1531,7 +1629,7 @@ async function syncInvoiceToSupabase(invoice) {
     if (!supabaseClient || !allowSupabaseSync || !invoice || !invoice.invoiceNumber) {
         return;
     }
-    const workspaceId = WORKSPACE_ID;
+    const workspaceId = getWorkspaceId();
     const now = new Date().toISOString();
     try {
         const { error: invoiceError } = await supabaseClient
@@ -1595,7 +1693,7 @@ async function deleteInvoiceFromSupabase(invoiceNumber) {
         const { error } = await supabaseClient
             .from('invoices')
             .delete()
-            .eq('workspace_id', WORKSPACE_ID)
+            .eq('workspace_id', getWorkspaceId())
             .eq('invoice_number', String(invoiceNumber));
         if (error) {
             console.warn('Supabase invoice delete failed', error);
@@ -1615,7 +1713,7 @@ async function syncFolderToSupabase(folder) {
             .from('invoice_folders')
             .upsert(
                 {
-                    workspace_id: WORKSPACE_ID,
+                    workspace_id: getWorkspaceId(),
                     id: String(folder.id),
                     name: folder.name || '',
                     parent_id: folder.parentId ? String(folder.parentId) : null,
@@ -1639,7 +1737,7 @@ async function deleteFolderFromSupabase(folderId) {
         const { error } = await supabaseClient
             .from('invoice_folders')
             .delete()
-            .eq('workspace_id', WORKSPACE_ID)
+            .eq('workspace_id', getWorkspaceId())
             .eq('id', String(folderId));
         if (error) {
             console.warn('Supabase folder delete failed', error);
@@ -1658,7 +1756,7 @@ async function syncTemplateToSupabase(template) {
             .from('invoice_templates')
             .upsert(
                 {
-                    workspace_id: WORKSPACE_ID,
+                    workspace_id: getWorkspaceId(),
                     id: template.id,
                     name: template.name || '',
                     from_company: template.from || '',
@@ -1689,7 +1787,7 @@ async function deleteTemplateFromSupabase(templateId) {
         const { error } = await supabaseClient
             .from('invoice_templates')
             .delete()
-            .eq('workspace_id', WORKSPACE_ID)
+            .eq('workspace_id', getWorkspaceId())
             .eq('id', templateId);
         if (error) {
             console.warn('Supabase template delete failed', error);
@@ -1704,7 +1802,7 @@ async function loadStateFromSupabase() {
         return;
     }
     try {
-        const workspaceId = WORKSPACE_ID;
+        const workspaceId = getWorkspaceId();
         const allItems = [];
         const pageSize = 1000;
         let offset = 0;
@@ -1839,7 +1937,7 @@ async function loadLegacyStateFromSupabase() {
         const { data } = await supabaseClient
             .from('invoice_state')
             .select('state')
-            .eq('workspace_id', WORKSPACE_ID)
+            .eq('workspace_id', getWorkspaceId())
             .single();
         if (data && data.state) {
             savedInvoices = data.state.invoices || [];
@@ -2202,11 +2300,17 @@ function startManualDrag(element, type, id, startEvent) {
 }
 
 initSupabase();
-loadStateFromSupabase().then(() => {
-    normalizeInvoiceFolders();
-    renderSavedView();
-});
-showHome();
+if (!activeProfileId || !profiles.find(p => p.id === activeProfileId)) {
+    renderProfilePickerUI();
+    document.getElementById('profilePicker').style.display = 'flex';
+} else {
+    updateProfileIndicator();
+    loadStateFromSupabase().then(() => {
+        normalizeInvoiceFolders();
+        renderSavedView();
+    });
+    showHome();
+}
 
 window.addEventListener('beforeprint', () => {
     document.querySelectorAll('#itemsBody tr').forEach(row => {
