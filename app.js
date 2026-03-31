@@ -504,58 +504,62 @@ function renderDashboard() {
             `<span class="dashboard-summary-item">Outstanding: <strong style="color:#c62828">${formatCurrency(grandUnpaid)}</strong></span>`;
     }
 
-    // Group by billTo
-    const clientMap = new Map();
-    savedInvoices.forEach(inv => {
-        const key = (inv.billTo || '—').trim() || '—';
-        if (!clientMap.has(key)) clientMap.set(key, []);
-        clientMap.get(key).push(inv);
-    });
-
     contractsEl.innerHTML = '';
-    if (clientMap.size === 0) {
+
+    // One card per top-level folder
+    const topFolders = savedFolders.filter(f => !f.parentId);
+
+    if (topFolders.length === 0) {
         contractsEl.innerHTML = '<div class="dashboard-empty">No invoices yet. Hit "+ New Invoice" to get started.</div>';
         return;
     }
 
-    clientMap.forEach((invoices, client) => {
-        // Build folder filter options for this client
-        const folderIds = [...new Set(invoices.map(inv => inv.folderId).filter(Boolean))];
-        const clientFolders = folderIds.map(id => getFolderById(id)).filter(Boolean);
+    topFolders.forEach(folder => {
+        const allDescendantIds = new Set(getDescendantFolderIds(folder.id));
+        const folderInvoices = savedInvoices.filter(inv => allDescendantIds.has(inv.folderId));
+
+        const subfolders = savedFolders.filter(f => f.parentId === folder.id);
 
         const card = document.createElement('div');
         card.className = 'dashboard-card';
 
-        // Header: client name + folder filter
+        // Header: folder name + subfolder filter
         const header = document.createElement('div');
         header.className = 'dashboard-card-header';
 
         const nameEl = document.createElement('h3');
         nameEl.className = 'dashboard-client-name';
-        nameEl.textContent = client;
+        nameEl.textContent = folder.name;
 
         const select = document.createElement('select');
         select.className = 'dashboard-folder-filter';
         const allOpt = document.createElement('option');
         allOpt.value = '';
-        allOpt.textContent = 'All Folders';
+        allOpt.textContent = 'All';
         select.appendChild(allOpt);
-        clientFolders.forEach(folder => {
+        subfolders.forEach(sub => {
             const opt = document.createElement('option');
-            opt.value = folder.id;
-            opt.textContent = folder.name;
+            opt.value = sub.id;
+            opt.textContent = sub.name;
             select.appendChild(opt);
         });
 
         header.appendChild(nameEl);
-        if (clientFolders.length > 0) header.appendChild(select);
+        if (subfolders.length > 0) header.appendChild(select);
 
-        // Stats (re-rendered on filter change)
+        // Stats — re-calculated on filter change
         const statsEl = document.createElement('div');
 
         function updateStats() {
-            const folderId = select.value;
-            const filtered = folderId ? invoices.filter(inv => inv.folderId === folderId) : invoices;
+            const selectedId = select.value;
+            let filtered;
+            if (selectedId) {
+                const subIds = new Set(getDescendantFolderIds(selectedId));
+                filtered = folderInvoices.filter(inv => subIds.has(inv.folderId));
+            } else {
+                filtered = folderInvoices;
+            }
+
             const total = filtered.reduce((s, inv) => s + getInvoiceTotal(inv), 0);
             const paid = filtered.filter(inv => inv.paid).reduce((s, inv) => s + getInvoiceTotal(inv), 0);
             const unpaid = total - paid;
