@@ -504,54 +504,83 @@ function renderDashboard() {
             `<span class="dashboard-summary-item">Outstanding: <strong style="color:#c62828">${formatCurrency(grandUnpaid)}</strong></span>`;
     }
 
-    contractsEl.innerHTML = '';
-
-    const filterInput = document.getElementById('dashboardFilter');
-    const q = filterInput ? filterInput.value.trim().toLowerCase() : '';
-
-    // All folders that have at least one invoice, filtered by name query
-    const foldersWithInvoices = savedFolders.filter(folder => {
-        if (q && !folder.name.toLowerCase().includes(q)) return false;
-        return savedInvoices.some(inv => inv.folderId === folder.id);
+    // Group by billTo
+    const clientMap = new Map();
+    savedInvoices.forEach(inv => {
+        const key = (inv.billTo || '—').trim() || '—';
+        if (!clientMap.has(key)) clientMap.set(key, []);
+        clientMap.get(key).push(inv);
     });
 
-    if (foldersWithInvoices.length === 0) {
-        contractsEl.innerHTML = q
-            ? '<div class="dashboard-empty">No folders match your filter.</div>'
-            : '<div class="dashboard-empty">No invoices yet. Hit "+ New Invoice" to get started.</div>';
+    contractsEl.innerHTML = '';
+    if (clientMap.size === 0) {
+        contractsEl.innerHTML = '<div class="dashboard-empty">No invoices yet. Hit "+ New Invoice" to get started.</div>';
         return;
     }
 
-    foldersWithInvoices.forEach(folder => {
-        const invoices = savedInvoices.filter(inv => inv.folderId === folder.id);
-        const total = invoices.reduce((s, inv) => s + getInvoiceTotal(inv), 0);
-        const paid = invoices.filter(inv => inv.paid).reduce((s, inv) => s + getInvoiceTotal(inv), 0);
-        const unpaid = total - paid;
-
-        // Build path label (e.g. "BPS / March 2025")
-        const path = getFolderPath(folder.id);
-        const pathLabel = path.map(f => f.name).join(' / ');
+    clientMap.forEach((invoices, client) => {
+        const folderIds = [...new Set(invoices.map(inv => inv.folderId).filter(Boolean))];
+        const clientFolders = folderIds.map(id => getFolderById(id)).filter(Boolean);
 
         const card = document.createElement('div');
         card.className = 'dashboard-card';
 
-        card.innerHTML =
-            `<div class="dashboard-card-header">` +
-                `<div>` +
-                    `<div class="dashboard-client-name">${folder.name}</div>` +
-                    (path.length > 1 ? `<div class="dashboard-folder-path">${pathLabel}</div>` : '') +
-                `</div>` +
-            `</div>` +
-            `<div class="dashboard-total">` +
-                `<span class="dashboard-total-value">${formatCurrency(total)}</span>` +
-                `<span class="dashboard-total-label">Total Invoiced</span>` +
-            `</div>` +
-            `<div class="dashboard-meta-row">` +
-                `<span class="dashboard-count">${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}</span>` +
-                `<span class="dashboard-paid">✓ ${formatCurrency(paid)}</span>` +
-                `<span class="dashboard-unpaid">⏳ ${formatCurrency(unpaid)}</span>` +
-            `</div>`;
+        const header = document.createElement('div');
+        header.className = 'dashboard-card-header';
 
+        const nameEl = document.createElement('h3');
+        nameEl.className = 'dashboard-client-name';
+        nameEl.textContent = client;
+
+        const select = document.createElement('select');
+        select.className = 'dashboard-folder-filter';
+        const allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = 'All Folders';
+        select.appendChild(allOpt);
+        clientFolders.forEach(folder => {
+            const opt = document.createElement('option');
+            opt.value = folder.id;
+            opt.textContent = folder.name;
+            select.appendChild(opt);
+        });
+
+        header.appendChild(nameEl);
+        if (clientFolders.length > 0) header.appendChild(select);
+
+        const statsEl = document.createElement('div');
+
+        function updateStats() {
+            const folderId = select.value;
+            const filtered = folderId ? invoices.filter(inv => inv.folderId === folderId) : invoices;
+            const total = filtered.reduce((s, inv) => s + getInvoiceTotal(inv), 0);
+            const paid = filtered.filter(inv => inv.paid).reduce((s, inv) => s + getInvoiceTotal(inv), 0);
+            const unpaid = total - paid;
+
+            statsEl.innerHTML = '';
+
+            const totalDiv = document.createElement('div');
+            totalDiv.className = 'dashboard-total';
+            totalDiv.innerHTML =
+                `<span class="dashboard-total-value">${formatCurrency(total)}</span>` +
+                `<span class="dashboard-total-label">Total Invoiced</span>`;
+
+            const metaDiv = document.createElement('div');
+            metaDiv.className = 'dashboard-meta-row';
+            metaDiv.innerHTML =
+                `<span class="dashboard-count">${filtered.length} invoice${filtered.length !== 1 ? 's' : ''}</span>` +
+                `<span class="dashboard-paid">✓ ${formatCurrency(paid)}</span>` +
+                `<span class="dashboard-unpaid">⏳ ${formatCurrency(unpaid)}</span>`;
+
+            statsEl.appendChild(totalDiv);
+            statsEl.appendChild(metaDiv);
+        }
+
+        select.onchange = updateStats;
+        updateStats();
+
+        card.appendChild(header);
+        card.appendChild(statsEl);
         contractsEl.appendChild(card);
     });
 }
