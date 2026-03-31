@@ -301,40 +301,45 @@ body {
     background: #f1f3f4;
 }
 
-/* ── Home view ───────────────────────────────── */
+/* ── Home / Dashboard ────────────────────────── */
 
 .home-content {
-    padding: 80px 30px;
+    padding: 28px 28px 40px;
     display: none;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    min-height: 60vh;
-    justify-content: center;
 }
 
-.home-hero {
-    margin-bottom: 32px;
+.dashboard-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
 }
 
-.home-hero h1 {
-    font-size: 30px;
-    font-weight: 400;
-    margin-bottom: 10px;
+.dashboard-greeting {
+    font-size: 22px;
+    font-weight: 500;
     color: #202124;
+    margin-bottom: 6px;
 }
 
-.home-hero p {
+.dashboard-summary {
+    font-size: 13px;
     color: #5f6368;
-    font-size: 15px;
-    max-width: 400px;
-    line-height: 1.6;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.dashboard-summary-item strong {
+    color: #202124;
 }
 
 .home-actions {
     display: flex;
     gap: 12px;
-    justify-content: center;
+    flex-shrink: 0;
 }
 
 .home-actions .btn-new {
@@ -356,6 +361,105 @@ body {
 
 .home-actions .btn-save:hover {
     background: #f8f9fa;
+}
+
+/* ── Dashboard contract cards ────────────────── */
+
+.dashboard-contracts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.dashboard-empty {
+    color: #5f6368;
+    font-size: 14px;
+    padding: 40px 0;
+    grid-column: 1 / -1;
+}
+
+.dashboard-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dashboard-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.dashboard-client-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: #202124;
+}
+
+.dashboard-folder-filter {
+    padding: 4px 8px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #5f6368;
+    background: #f8f9fa;
+    cursor: pointer;
+    outline: none;
+    max-width: 140px;
+}
+
+.dashboard-folder-filter:focus {
+    border-color: #FF6B35;
+}
+
+.dashboard-total {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dashboard-total-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #202124;
+    letter-spacing: -0.5px;
+}
+
+.dashboard-total-label {
+    font-size: 11px;
+    color: #80868b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dashboard-meta-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.dashboard-count {
+    color: #5f6368;
+    margin-right: auto;
+}
+
+.dashboard-paid {
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+.dashboard-unpaid {
+    color: #c62828;
+    font-weight: 500;
 }
 
 /* ── Saved view ──────────────────────────────── */

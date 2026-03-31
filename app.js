@@ -486,11 +486,114 @@ function getInvoiceTotal(invoice) {
 }
 
 
+function renderDashboard() {
+    const profile = getActiveProfile();
+    const greetingEl = document.getElementById('dashboardGreeting');
+    const summaryEl = document.getElementById('dashboardSummary');
+    const contractsEl = document.getElementById('dashboardContracts');
+    if (!contractsEl) return;
+
+    if (greetingEl) greetingEl.textContent = profile ? 'Hi, ' + profile.name : 'Dashboard';
+
+    // Overall summary
+    const grandTotal = savedInvoices.reduce((s, inv) => s + getInvoiceTotal(inv), 0);
+    const grandUnpaid = savedInvoices.filter(inv => !inv.paid).reduce((s, inv) => s + getInvoiceTotal(inv), 0);
+    if (summaryEl) {
+        summaryEl.innerHTML =
+            `<span class="dashboard-summary-item">Total invoiced: <strong>${formatCurrency(grandTotal)}</strong></span>` +
+            `<span class="dashboard-summary-item">Outstanding: <strong style="color:#c62828">${formatCurrency(grandUnpaid)}</strong></span>`;
+    }
+
+    // Group by billTo
+    const clientMap = new Map();
+    savedInvoices.forEach(inv => {
+        const key = (inv.billTo || '—').trim() || '—';
+        if (!clientMap.has(key)) clientMap.set(key, []);
+        clientMap.get(key).push(inv);
+    });
+
+    contractsEl.innerHTML = '';
+    if (clientMap.size === 0) {
+        contractsEl.innerHTML = '<div class="dashboard-empty">No invoices yet. Hit "+ New Invoice" to get started.</div>';
+        return;
+    }
+
+    clientMap.forEach((invoices, client) => {
+        // Build folder filter options for this client
+        const folderIds = [...new Set(invoices.map(inv => inv.folderId).filter(Boolean))];
+        const clientFolders = folderIds.map(id => getFolderById(id)).filter(Boolean);
+
+        const card = document.createElement('div');
+        card.className = 'dashboard-card';
+
+        // Header: client name + folder filter
+        const header = document.createElement('div');
+        header.className = 'dashboard-card-header';
+
+        const nameEl = document.createElement('h3');
+        nameEl.className = 'dashboard-client-name';
+        nameEl.textContent = client;
+
+        const select = document.createElement('select');
+        select.className = 'dashboard-folder-filter';
+        const allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = 'All Folders';
+        select.appendChild(allOpt);
+        clientFolders.forEach(folder => {
+            const opt = document.createElement('option');
+            opt.value = folder.id;
+            opt.textContent = folder.name;
+            select.appendChild(opt);
+        });
+
+        header.appendChild(nameEl);
+        if (clientFolders.length > 0) header.appendChild(select);
+
+        // Stats (re-rendered on filter change)
+        const statsEl = document.createElement('div');
+
+        function updateStats() {
+            const folderId = select.value;
+            const filtered = folderId ? invoices.filter(inv => inv.folderId === folderId) : invoices;
+            const total = filtered.reduce((s, inv) => s + getInvoiceTotal(inv), 0);
+            const paid = filtered.filter(inv => inv.paid).reduce((s, inv) => s + getInvoiceTotal(inv), 0);
+            const unpaid = total - paid;
+
+            statsEl.innerHTML = '';
+
+            const totalDiv = document.createElement('div');
+            totalDiv.className = 'dashboard-total';
+            totalDiv.innerHTML =
+                `<span class="dashboard-total-value">${formatCurrency(total)}</span>` +
+                `<span class="dashboard-total-label">Total Invoiced</span>`;
+
+            const metaDiv = document.createElement('div');
+            metaDiv.className = 'dashboard-meta-row';
+            metaDiv.innerHTML =
+                `<span class="dashboard-count">${filtered.length} invoice${filtered.length !== 1 ? 's' : ''}</span>` +
+                `<span class="dashboard-paid">✓ ${formatCurrency(paid)}</span>` +
+                `<span class="dashboard-unpaid">⏳ ${formatCurrency(unpaid)}</span>`;
+
+            statsEl.appendChild(totalDiv);
+            statsEl.appendChild(metaDiv);
+        }
+
+        select.onchange = updateStats;
+        updateStats();
+
+        card.appendChild(header);
+        card.appendChild(statsEl);
+        contractsEl.appendChild(card);
+    });
+}
+
 function showHome() {
     document.getElementById('homeView').style.display = 'block';
     document.getElementById('editorView').style.display = 'none';
     document.getElementById('savedView').style.display = 'none';
     document.querySelector('.invoice-actions').style.display = 'none';
+    renderDashboard();
 }
 
 function showEditor() {
@@ -2316,6 +2419,7 @@ if (!activeProfileId || !profiles.find(p => p.id === activeProfileId)) {
     loadStateFromSupabase().then(() => {
         normalizeInvoiceFolders();
         renderSavedView();
+        renderDashboard();
     });
     showHome();
 }

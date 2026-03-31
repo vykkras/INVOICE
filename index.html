@@ -29,14 +29,17 @@
         <div class="invoice-banner" aria-hidden="true"></div>
 
         <div class="home-content" id="homeView">
-            <div class="home-hero">
-                <h1>Invoice Manager</h1>
-                <p>Create new invoices or jump back into saved work.</p>
+            <div class="dashboard-topbar">
+                <div>
+                    <div class="dashboard-greeting" id="dashboardGreeting">Dashboard</div>
+                    <div class="dashboard-summary" id="dashboardSummary"></div>
+                </div>
+                <div class="home-actions">
+                    <button class="btn btn-new" onclick="showNewInvoiceDropdown(this,'home')">+ New Invoice ▾</button>
+                    <button class="btn btn-save" onclick="openSavedInvoicesView()">Saved Invoices</button>
+                </div>
             </div>
-            <div class="home-actions">
-                <button class="btn btn-new" onclick="showNewInvoiceDropdown(this,'home')">+ New Invoice ▾</button>
-                <button class="btn btn-save" onclick="openSavedInvoicesView()">Saved Invoices</button>
-            </div>
+            <div class="dashboard-contracts" id="dashboardContracts"></div>
         </div>
 
         <div class="saved-view" id="savedView">
