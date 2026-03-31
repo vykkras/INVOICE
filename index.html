@@ -41,6 +41,7 @@
         <div class="saved-view" id="savedView">
             <div class="saved-toolbar">
                 <div class="saved-breadcrumbs" id="savedBreadcrumbs"></div>
+                <input type="text" id="invoiceSearch" class="invoice-search" placeholder="🔍 Search invoices..." oninput="handleSearch(this.value)" autocomplete="off">
                 <div class="saved-actions">
                     <button class="btn btn-new" type="button" onclick="showNewInvoiceDropdown(this,'saved')">+ New Invoice ▾</button>
                     <button class="btn btn-folder" type="button" onclick="openFolderCreator()">+ New Folder</button>

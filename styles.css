@@ -250,6 +250,41 @@ body {
     align-items: center;
 }
 
+/* ── Search ──────────────────────────────────── */
+
+.invoice-search {
+    padding: 7px 14px;
+    border: 1px solid #dadce0;
+    border-radius: 20px;
+    font-size: 13px;
+    background: #f1f3f4;
+    width: 220px;
+    outline: none;
+    transition: background 0.15s, border-color 0.15s, width 0.2s;
+    color: #202124;
+}
+
+.invoice-search:focus {
+    background: #fff;
+    border-color: #FF6B35;
+    width: 280px;
+}
+
+.invoice-search::placeholder {
+    color: #80868b;
+}
+
+.search-result-label {
+    font-size: 13px;
+    color: #5f6368;
+    padding: 4px 6px;
+}
+
+.search-result-folder {
+    font-size: 11px;
+    color: #80868b;
+}
+
 /* ── Drive-style file list ───────────────────── */
 
 .saved-list {

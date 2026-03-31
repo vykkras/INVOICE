@@ -34,6 +34,7 @@ let pendingDuplicate = null;
 let savedTemplates = JSON.parse(localStorage.getItem('invoiceTemplates') || '[]');
 let currentTemplateId = null;
 let _newInvoiceContext = 'home';
+let searchQuery = '';
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -1012,25 +1013,39 @@ function renderSavedView() {
     breadcrumbs.innerHTML = '';
     updateUndoBar();
 
-    const path = getFolderPath(currentSavedFolderId);
-    const rootButton = document.createElement('button');
-    rootButton.textContent = 'Saved Invoices';
-    rootButton.onclick = () => navigateFolder(null);
-    breadcrumbs.appendChild(rootButton);
-    path.forEach(folder => {
-        const sep = document.createElement('span');
-        sep.textContent = ' / ';
-        breadcrumbs.appendChild(sep);
-        const crumb = document.createElement('button');
-        crumb.textContent = folder.name;
-        crumb.onclick = () => navigateFolder(folder.id);
-        breadcrumbs.appendChild(crumb);
-    });
+    let foldersHere, invoicesHere, templatesVisible;
 
-    const currentId = currentSavedFolderId ? String(currentSavedFolderId) : null;
-    const foldersHere = savedFolders.filter(folder => String(folder.parentId || '') === String(currentId || ''));
-    const invoicesHere = savedInvoices.filter(inv => String(inv.folderId || '') === String(currentId || ''));
-    const templatesVisible = !currentSavedFolderId && savedTemplates.length > 0;
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        foldersHere = [];
+        invoicesHere = savedInvoices.filter(inv => matchesSearch(inv, q));
+        templatesVisible = false;
+
+        const label = document.createElement('span');
+        label.className = 'search-result-label';
+        label.textContent = `${invoicesHere.length} result${invoicesHere.length !== 1 ? 's' : ''} for "${searchQuery}"`;
+        breadcrumbs.appendChild(label);
+    } else {
+        const path = getFolderPath(currentSavedFolderId);
+        const rootButton = document.createElement('button');
+        rootButton.textContent = 'Saved Invoices';
+        rootButton.onclick = () => navigateFolder(null);
+        breadcrumbs.appendChild(rootButton);
+        path.forEach(folder => {
+            const sep = document.createElement('span');
+            sep.textContent = ' / ';
+            breadcrumbs.appendChild(sep);
+            const crumb = document.createElement('button');
+            crumb.textContent = folder.name;
+            crumb.onclick = () => navigateFolder(folder.id);
+            breadcrumbs.appendChild(crumb);
+        });
+
+        const currentId = currentSavedFolderId ? String(currentSavedFolderId) : null;
+        foldersHere = savedFolders.filter(folder => String(folder.parentId || '') === String(currentId || ''));
+        invoicesHere = savedInvoices.filter(inv => String(inv.folderId || '') === String(currentId || ''));
+        templatesVisible = !currentSavedFolderId && savedTemplates.length > 0;
+    }
 
     if (!foldersHere.length && !invoicesHere.length && !templatesVisible) {
         const empty = document.createElement('div');
@@ -1237,6 +1252,15 @@ function renderSavedView() {
         amountSpan.textContent = formatCurrency(getInvoiceTotal(invoice));
         meta.appendChild(date);
         meta.appendChild(amountSpan);
+        if (searchQuery && invoice.folderId) {
+            const folder = getFolderById(invoice.folderId);
+            if (folder) {
+                const folderSpan = document.createElement('span');
+                folderSpan.className = 'search-result-folder';
+                folderSpan.textContent = '📁 ' + folder.name;
+                meta.appendChild(folderSpan);
+            }
+        }
 
         const info = document.createElement('div');
         info.className = 'saved-item-info';
@@ -1294,8 +1318,31 @@ function renderSavedView() {
 
 }
 
+function matchesSearch(invoice, q) {
+    if (!q) return true;
+    return (
+        (invoice.invoiceNumber || '').toLowerCase().includes(q) ||
+        (invoice.project || '').toLowerCase().includes(q) ||
+        (invoice.billTo || '').toLowerCase().includes(q) ||
+        (invoice.from || '').toLowerCase().includes(q) ||
+        (invoice.date || '').toLowerCase().includes(q) ||
+        (invoice.notes || '').toLowerCase().includes(q) ||
+        (Array.isArray(invoice.items) && invoice.items.some(item =>
+            (item.description || '').toLowerCase().includes(q)
+        ))
+    );
+}
+
+function handleSearch(value) {
+    searchQuery = value.trim();
+    renderSavedView();
+}
+
 function navigateFolder(folderId) {
     currentSavedFolderId = folderId ? String(folderId) : null;
+    searchQuery = '';
+    const input = document.getElementById('invoiceSearch');
+    if (input) input.value = '';
     renderSavedView();
 }
 
