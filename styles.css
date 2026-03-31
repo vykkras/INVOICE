@@ -375,6 +375,20 @@ body {
     gap: 16px;
 }
 
+.dashboard-filter-bar {
+    margin-bottom: 20px;
+}
+
+.dashboard-filter-bar .invoice-search {
+    width: 280px;
+}
+
+.dashboard-folder-path {
+    font-size: 11px;
+    color: #80868b;
+    margin-top: 2px;
+}
+
 .dashboard-empty {
     color: #5f6368;
     font-size: 14px;

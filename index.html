@@ -40,6 +40,9 @@
                     <button class="btn btn-save" onclick="openSavedInvoicesView()">Saved Invoices</button>
                 </div>
             </div>
+            <div class="dashboard-filter-bar">
+                <input type="text" id="dashboardFilter" class="invoice-search" placeholder="🔍 Filter folders..." oninput="renderDashboard()" autocomplete="off">
+            </div>
             <div class="dashboard-contracts" id="dashboardContracts"></div>
         </div>
 
