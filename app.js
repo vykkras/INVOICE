@@ -1624,7 +1624,24 @@ async function loadStateFromSupabase() {
     }
     try {
         const workspaceId = WORKSPACE_ID;
-        const [foldersRes, invoicesRes, itemsRes, templatesRes] = await Promise.all([
+        const allItems = [];
+        const pageSize = 1000;
+        let offset = 0;
+        while (true) {
+            const { data, error } = await supabaseClient
+                .from('invoice_items')
+                .select('invoice_number, position, description, quantity, rate')
+                .eq('workspace_id', workspaceId)
+                .order('position', { ascending: true })
+                .range(offset, offset + pageSize - 1);
+            if (error) { console.warn('Supabase items page failed', error); break; }
+            if (data && data.length > 0) allItems.push(...data);
+            if (!data || data.length < pageSize) break;
+            offset += pageSize;
+        }
+        const itemsRes = { data: allItems, error: null };
+
+        const [foldersRes, invoicesRes, templatesRes] = await Promise.all([
             supabaseClient
                 .from('invoice_folders')
                 .select('id, name, parent_id')
@@ -1633,11 +1650,6 @@ async function loadStateFromSupabase() {
                 .from('invoices')
                 .select('invoice_number, date, project, supervisor, from_company, bill_to, bill_to_address, notes, meta_fields, paid, folder_id')
                 .eq('workspace_id', workspaceId),
-            supabaseClient
-                .from('invoice_items')
-                .select('invoice_number, position, description, quantity, rate')
-                .eq('workspace_id', workspaceId)
-                .order('position', { ascending: true }),
             supabaseClient
                 .from('invoice_templates')
                 .select('id, name, from_company, bill_to, bill_to_address, notes, project, supervisor, meta_fields, items')
@@ -1701,14 +1713,12 @@ async function loadStateFromSupabase() {
         }));
         remoteInvoices.forEach(inv => {
             inv.metaFields = buildMetaFieldsForInvoice(inv);
-            // If Supabase has no items for this invoice but localStorage does,
-            // keep the local items — this protects against a failed item sync
-            // (delete succeeded but insert failed) silently wiping rows.
-            if (inv.items.length === 0) {
-                const localInv = savedInvoices.find(l => l.invoiceNumber === inv.invoiceNumber);
-                if (localInv && Array.isArray(localInv.items) && localInv.items.length > 0) {
-                    inv.items = localInv.items;
-                }
+            // If localStorage has more items than Supabase returned, prefer local.
+            // This guards against both: (a) the row-limit truncation returning partial
+            // items, and (b) a failed insert after a successful delete wiping all rows.
+            const localInv = savedInvoices.find(l => l.invoiceNumber === inv.invoiceNumber);
+            if (localInv && Array.isArray(localInv.items) && localInv.items.length > inv.items.length) {
+                inv.items = localInv.items;
             }
         });
         savedFolders = remoteFolders;
