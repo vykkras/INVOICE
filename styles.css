@@ -133,6 +133,28 @@
     background: #e85a2a;
 }
 
+.profile-admin-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #5f6368;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.profile-admin-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #FF6B35;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
 /* ── Profile indicator (header avatar) ──────── */
 
 .profile-indicator {

@@ -190,6 +190,9 @@
             <div class="profile-create" id="profileCreate">
                 <input type="text" id="newProfileName" placeholder="Enter your name" autocomplete="off"
                     onkeydown="if(event.key==='Enter')submitNewProfile()">
+                <label class="profile-admin-label">
+                    <input type="checkbox" id="newProfileAdmin"> Admin
+                </label>
                 <button type="button" onclick="submitNewProfile()">Continue →</button>
             </div>
         </div>

@@ -61,6 +61,52 @@ function getActiveProfile() {
     return profiles.find(p => p.id === activeProfileId) || null;
 }
 
+function isAdminProfile() {
+    const p = getActiveProfile();
+    return p ? Boolean(p.isAdmin) : false;
+}
+
+async function syncProfileToSupabase(profile) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('profiles').upsert(
+            { id: profile.id, name: profile.name, workspace_id: profile.workspaceId, is_admin: profile.isAdmin || false },
+            { onConflict: 'id' }
+        );
+    } catch (e) {
+        console.warn('Profile sync failed', e);
+    }
+}
+
+async function loadProfilesFromSupabase() {
+    if (!supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient.from('profiles').select('id, name, workspace_id, is_admin');
+        if (error || !data) return;
+        // Merge remote profiles into local list
+        data.forEach(row => {
+            const existing = profiles.find(p => p.id === row.id);
+            if (existing) {
+                existing.name = row.name;
+                existing.workspaceId = row.workspace_id;
+                existing.isAdmin = Boolean(row.is_admin);
+            } else {
+                profiles.push({ id: row.id, name: row.name, workspaceId: row.workspace_id, isAdmin: Boolean(row.is_admin) });
+            }
+        });
+        // Push any local profiles that aren't in Supabase yet
+        const remoteIds = new Set(data.map(r => r.id));
+        for (const p of profiles) {
+            if (!remoteIds.has(p.id)) {
+                await syncProfileToSupabase(p);
+            }
+        }
+        saveProfiles();
+    } catch (e) {
+        console.warn('Profile load failed', e);
+    }
+}
+
 function saveProfiles() {
     localStorage.setItem('invoiceProfiles', JSON.stringify(profiles));
 }
@@ -76,7 +122,7 @@ function selectProfile(profileId) {
     window.location.reload();
 }
 
-function createProfile(name) {
+function createProfile(name, isAdmin = false) {
     if (!name.trim()) return;
     const id = 'profile-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     // First profile on a device that already has data → inherit 'default' workspace
@@ -84,8 +130,10 @@ function createProfile(name) {
     const isFirst = profiles.length === 0;
     const hasExistingData = savedInvoices.length > 0 || savedFolders.length > 0;
     const workspaceId = (isFirst && hasExistingData) ? 'default' : id;
-    profiles.push({ id, name: name.trim(), workspaceId });
+    const profile = { id, name: name.trim(), workspaceId, isAdmin };
+    profiles.push(profile);
     saveProfiles();
+    syncProfileToSupabase(profile);
     selectProfile(id);
 }
 
@@ -93,7 +141,8 @@ function submitNewProfile() {
     const input = document.getElementById('newProfileName');
     const name = input ? input.value.trim() : '';
     if (!name) { if (input) input.focus(); return; }
-    createProfile(name);
+    const adminCheck = document.getElementById('newProfileAdmin');
+    createProfile(name, adminCheck ? adminCheck.checked : false);
 }
 
 function updateProfileIndicator() {
@@ -126,6 +175,12 @@ function renderProfilePickerUI() {
             nameEl.textContent = profile.name;
             btn.appendChild(avatar);
             btn.appendChild(nameEl);
+            if (profile.isAdmin) {
+                const badge = document.createElement('span');
+                badge.className = 'profile-admin-badge';
+                badge.textContent = 'Admin';
+                btn.appendChild(badge);
+            }
             list.appendChild(btn);
         });
         const addBtn = document.createElement('button');
@@ -2409,10 +2464,13 @@ function startManualDrag(element, type, id, startEvent) {
 
 initSupabase();
 if (!activeProfileId || !profiles.find(p => p.id === activeProfileId)) {
-    renderProfilePickerUI();
-    document.getElementById('profilePicker').style.display = 'flex';
+    loadProfilesFromSupabase().then(() => {
+        renderProfilePickerUI();
+        document.getElementById('profilePicker').style.display = 'flex';
+    });
 } else {
     updateProfileIndicator();
+    loadProfilesFromSupabase();
     loadStateFromSupabase().then(() => {
         normalizeInvoiceFolders();
         renderSavedView();
