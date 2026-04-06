@@ -21,6 +21,7 @@ if (localStorage.getItem('profileJustSwitched')) {
     localStorage.removeItem('invoiceFolders');
     localStorage.removeItem('invoiceTemplates');
     localStorage.removeItem('invoiceDeleteHistory');
+    localStorage.removeItem('clientCounters');
 }
 
 // Load saved invoices from localStorage
@@ -602,6 +603,27 @@ let clientCounters = JSON.parse(localStorage.getItem('clientCounters') || '{}');
 
 function saveClientCounters() {
     localStorage.setItem('clientCounters', JSON.stringify(clientCounters));
+}
+
+function rebuildClientCounters() {
+    const rebuilt = {};
+    savedInvoices.forEach(invoice => {
+        if (!invoice.billTo) return;
+        const key = invoice.billTo.trim().toUpperCase();
+        const num = parseInt(invoice.invoiceNumber, 10);
+        if (!Number.isNaN(num)) {
+            if (rebuilt[key] === undefined || num > rebuilt[key]) {
+                rebuilt[key] = num;
+            }
+        }
+    });
+    // Only update entries where invoices give a higher baseline than what's stored
+    Object.keys(rebuilt).forEach(key => {
+        if (clientCounters[key] === undefined || rebuilt[key] > clientCounters[key]) {
+            clientCounters[key] = rebuilt[key];
+        }
+    });
+    saveClientCounters();
 }
 
 function getNextInvoiceNumber() {
@@ -2173,6 +2195,7 @@ async function loadStateFromSupabase() {
         });
         savedFolders = remoteFolders;
         savedInvoices = remoteInvoices;
+        rebuildClientCounters();
         if (!templatesRes.error && Array.isArray(templatesRes.data) && templatesRes.data.length > 0) {
             savedTemplates = templatesRes.data.map(t => ({
                 id: t.id,
