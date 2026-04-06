@@ -164,6 +164,8 @@ function renderProfilePickerUI() {
     if (profiles.length > 0) {
         createSection.style.display = 'none';
         profiles.forEach(profile => {
+            const wrap = document.createElement('div');
+            wrap.className = 'profile-card-wrap';
             const btn = document.createElement('button');
             btn.className = 'profile-card';
             btn.onclick = () => selectProfile(profile.id);
@@ -181,7 +183,17 @@ function renderProfilePickerUI() {
                 badge.textContent = 'Admin';
                 btn.appendChild(badge);
             }
-            list.appendChild(btn);
+            wrap.appendChild(btn);
+            const delBtn = document.createElement('button');
+            delBtn.className = 'profile-delete-btn';
+            delBtn.title = 'Delete profile';
+            delBtn.textContent = '×';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteProfile(profile.id);
+            };
+            wrap.appendChild(delBtn);
+            list.appendChild(wrap);
         });
         const addBtn = document.createElement('button');
         addBtn.className = 'profile-add-btn';
@@ -200,6 +212,27 @@ function renderProfilePickerUI() {
 function showProfilePicker() {
     renderProfilePickerUI();
     document.getElementById('profilePicker').style.display = 'flex';
+}
+
+async function deleteProfile(profileId) {
+    const profile = profiles.find(p => p.id === profileId);
+    if (!profile) return;
+    if (!confirm(`Delete profile "${profile.name}"? This only removes the profile entry — their invoices are not deleted.`)) return;
+    profiles = profiles.filter(p => p.id !== profileId);
+    saveProfiles();
+    if (supabaseClient) {
+        try {
+            await supabaseClient.from('profiles').delete().eq('id', profileId);
+        } catch (e) {
+            console.warn('Profile delete from Supabase failed', e);
+        }
+    }
+    if (activeProfileId === profileId) {
+        localStorage.removeItem('activeProfileId');
+        window.location.reload();
+        return;
+    }
+    renderProfilePickerUI();
 }
 // ── End profiles ───────────────────────────────────────────────────────────────
 
