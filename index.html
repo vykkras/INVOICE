@@ -27,6 +27,10 @@
                 <button class="btn btn-print" id="printBtnFresh" type="button" onclick="printInvoice()">🖨️ Print</button>
             </div>
         </div>
+        <div class="admin-return-bar" id="adminReturnBar" style="display:none">
+            <span id="adminReturnLabel"></span>
+            <button type="button" onclick="returnToAdmin()">← Back to Admin</button>
+        </div>
         <div class="invoice-banner" aria-hidden="true"></div>
 
         <div class="home-content" id="homeView">
@@ -195,6 +199,18 @@
                 </label>
                 <button type="button" onclick="submitNewProfile()">Continue →</button>
             </div>
+            <button class="btn-admin-functions" type="button" onclick="showAdminPanel()">⚙ Admin Functions</button>
+        </div>
+    </div>
+
+    <!-- Admin panel overlay -->
+    <div class="admin-panel-overlay" id="adminPanelOverlay">
+        <div class="admin-panel">
+            <div class="admin-panel-header">
+                <div class="admin-panel-title">Admin — All Profiles</div>
+                <button class="admin-panel-close" type="button" onclick="closeAdminPanel()">✕</button>
+            </div>
+            <div class="admin-profile-list" id="adminProfileList"></div>
         </div>
     </div>
 

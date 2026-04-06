@@ -234,6 +234,81 @@ async function deleteProfile(profileId) {
     }
     renderProfilePickerUI();
 }
+function showAdminPanel() {
+    renderAdminPanel();
+    document.getElementById('adminPanelOverlay').style.display = 'flex';
+}
+
+function closeAdminPanel() {
+    document.getElementById('adminPanelOverlay').style.display = 'none';
+}
+
+function renderAdminPanel() {
+    const list = document.getElementById('adminProfileList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!profiles.length) {
+        list.innerHTML = '<div class="admin-no-profiles">No profiles found.</div>';
+        return;
+    }
+    profiles.forEach(profile => {
+        const row = document.createElement('div');
+        row.className = 'admin-profile-row';
+        const left = document.createElement('div');
+        left.className = 'admin-profile-info';
+        const avatar = document.createElement('div');
+        avatar.className = 'profile-card-avatar admin-profile-avatar';
+        avatar.textContent = getInitials(profile.name);
+        const name = document.createElement('div');
+        name.className = 'admin-profile-name';
+        name.textContent = profile.name;
+        if (profile.isAdmin) {
+            const badge = document.createElement('span');
+            badge.className = 'profile-admin-badge';
+            badge.textContent = 'Admin';
+            name.appendChild(badge);
+        }
+        left.appendChild(avatar);
+        left.appendChild(name);
+        const enterBtn = document.createElement('button');
+        enterBtn.className = 'btn btn-save admin-enter-btn';
+        enterBtn.textContent = 'Enter';
+        enterBtn.onclick = () => enterProfileAsAdmin(profile.id);
+        row.appendChild(left);
+        row.appendChild(enterBtn);
+        list.appendChild(row);
+    });
+}
+
+function enterProfileAsAdmin(profileId) {
+    const current = getActiveProfile();
+    if (current && current.isAdmin) {
+        localStorage.setItem('adminReturnId', current.id);
+        localStorage.setItem('adminReturnName', current.name);
+    }
+    selectProfile(profileId);
+}
+
+function returnToAdmin() {
+    const returnId = localStorage.getItem('adminReturnId');
+    if (!returnId) return;
+    localStorage.removeItem('adminReturnId');
+    localStorage.removeItem('adminReturnName');
+    selectProfile(returnId);
+}
+
+function checkAdminReturn() {
+    const returnId = localStorage.getItem('adminReturnId');
+    const returnName = localStorage.getItem('adminReturnName');
+    if (!returnId) return;
+    const bar = document.getElementById('adminReturnBar');
+    const label = document.getElementById('adminReturnLabel');
+    const current = getActiveProfile();
+    if (bar && label && current) {
+        label.textContent = `Viewing ${current.name}'s workspace`;
+        bar.style.display = 'flex';
+    }
+}
 // ── End profiles ───────────────────────────────────────────────────────────────
 
 function saveFolders() {
@@ -2503,6 +2578,7 @@ if (!activeProfileId || !profiles.find(p => p.id === activeProfileId)) {
     });
 } else {
     updateProfileIndicator();
+    checkAdminReturn();
     loadProfilesFromSupabase();
     loadStateFromSupabase().then(() => {
         normalizeInvoiceFolders();
