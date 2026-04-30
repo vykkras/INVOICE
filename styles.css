@@ -839,6 +839,52 @@ body {
     background: #f8f9fa !important;
 }
 
+/* WAF highlight */
+.saved-item.waf,
+.saved-item.waf.paid,
+.saved-item.waf.unpaid {
+    background: #e6f4ea !important;
+    border-color: #a8d5b0 !important;
+}
+
+.saved-item.waf:hover,
+.saved-item.waf.paid:hover,
+.saved-item.waf.unpaid:hover {
+    background: #d4edda !important;
+}
+
+.saved-item-actions .waf-btn {
+    color: #137333;
+}
+
+.saved-item-actions .waf-btn.active {
+    background: #137333;
+    color: #fff;
+    border-radius: 4px;
+}
+
+.saved-item-actions .pc-btn {
+    color: #1a73e8;
+}
+
+.saved-item-actions .pc-btn.active {
+    background: #1a73e8;
+    color: #fff;
+    border-radius: 4px;
+}
+
+.payroll-completed-label {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a73e8;
+    background: #e8f0fe;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+
 /* ── Item icon ───────────────────────────────── */
 
 .item-type-icon {

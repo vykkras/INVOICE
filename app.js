@@ -1548,7 +1548,7 @@ function renderSavedView() {
 
     foldersHere.forEach(folder => {
         const item = document.createElement('div');
-        item.className = 'saved-item folder-item';
+        item.className = 'saved-item folder-item' + (folder.waf ? ' waf' : '');
         item.dataset.folderId = folder.id;
         item.onclick = () => {
             if (suppressClick) {
@@ -1619,12 +1619,36 @@ function renderSavedView() {
             deleteFolder(folder.id);
         };
 
+        const wafFolderBtn = document.createElement('button');
+        wafFolderBtn.className = folder.waf ? 'waf-btn active' : 'waf-btn';
+        wafFolderBtn.textContent = 'WAF';
+        wafFolderBtn.onclick = event => {
+            event.stopPropagation();
+            toggleFolderWaf(folder.id);
+        };
+
+        const pcFolderBtn = document.createElement('button');
+        pcFolderBtn.className = folder.payrollCompleted ? 'pc-btn active' : 'pc-btn';
+        pcFolderBtn.textContent = 'Payroll Completed';
+        pcFolderBtn.onclick = event => {
+            event.stopPropagation();
+            toggleFolderPayroll(folder.id);
+        };
+
+        actions.appendChild(wafFolderBtn);
+        actions.appendChild(pcFolderBtn);
         actions.appendChild(renameBtn);
         actions.appendChild(duplicateBtn);
         actions.appendChild(deleteBtn);
 
+        const pcFolderLabel = document.createElement('span');
+        pcFolderLabel.className = 'payroll-completed-label';
+        pcFolderLabel.textContent = 'Payroll Completed';
+        pcFolderLabel.style.display = folder.payrollCompleted ? '' : 'none';
+
         item.appendChild(icon);
         item.appendChild(info);
+        item.appendChild(pcFolderLabel);
         item.appendChild(actions);
         list.appendChild(item);
     });
@@ -1638,7 +1662,7 @@ function renderSavedView() {
 
     invoicesHere.forEach(invoice => {
         const item = document.createElement('div');
-        item.className = `saved-item invoice-item ${invoice.paid ? 'paid' : 'unpaid'}`;
+        item.className = `saved-item invoice-item ${invoice.paid ? 'paid' : 'unpaid'}${invoice.waf ? ' waf' : ''}`;
         item.dataset.invoiceNumber = invoice.invoiceNumber;
         item.onclick = () => {
             if (suppressClick) {
@@ -1729,18 +1753,74 @@ function renderSavedView() {
             deleteInvoice(invoice.invoiceNumber);
         };
 
+        const wafInvBtn = document.createElement('button');
+        wafInvBtn.className = invoice.waf ? 'waf-btn active' : 'waf-btn';
+        wafInvBtn.textContent = 'WAF';
+        wafInvBtn.onclick = event => {
+            event.stopPropagation();
+            toggleInvoiceWaf(invoice.invoiceNumber);
+        };
+
+        const pcInvBtn = document.createElement('button');
+        pcInvBtn.className = invoice.payrollCompleted ? 'pc-btn active' : 'pc-btn';
+        pcInvBtn.textContent = 'Payroll Completed';
+        pcInvBtn.onclick = event => {
+            event.stopPropagation();
+            toggleInvoicePayroll(invoice.invoiceNumber);
+        };
+
+        actions.appendChild(wafInvBtn);
+        actions.appendChild(pcInvBtn);
         actions.appendChild(duplicateBtn);
         actions.appendChild(moveBtn);
         actions.appendChild(paidBtn);
         actions.appendChild(deleteBtn);
 
+        const pcInvLabel = document.createElement('span');
+        pcInvLabel.className = 'payroll-completed-label';
+        pcInvLabel.textContent = 'Payroll Completed';
+        pcInvLabel.style.display = invoice.payrollCompleted ? '' : 'none';
+
         item.appendChild(icon);
         item.appendChild(info);
+        item.appendChild(pcInvLabel);
         item.appendChild(badge);
         item.appendChild(actions);
         list.appendChild(item);
     });
 
+}
+
+function toggleFolderPayroll(folderId) {
+    const folder = savedFolders.find(f => String(f.id) === String(folderId));
+    if (!folder) return;
+    folder.payrollCompleted = !folder.payrollCompleted;
+    saveFolders();
+    renderSavedView();
+}
+
+function toggleInvoicePayroll(invoiceNumber) {
+    const invoice = savedInvoices.find(inv => String(inv.invoiceNumber) === String(invoiceNumber));
+    if (!invoice) return;
+    invoice.payrollCompleted = !invoice.payrollCompleted;
+    saveInvoices();
+    renderSavedView();
+}
+
+function toggleFolderWaf(folderId) {
+    const folder = savedFolders.find(f => String(f.id) === String(folderId));
+    if (!folder) return;
+    folder.waf = !folder.waf;
+    saveFolders();
+    renderSavedView();
+}
+
+function toggleInvoiceWaf(invoiceNumber) {
+    const invoice = savedInvoices.find(inv => String(inv.invoiceNumber) === String(invoiceNumber));
+    if (!invoice) return;
+    invoice.waf = !invoice.waf;
+    saveInvoices();
+    renderSavedView();
 }
 
 function matchesSearch(invoice, q) {
