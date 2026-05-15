@@ -1866,15 +1866,13 @@ select:focus {
     }
 
     .meta-row-inline .meta-value {
-        flex: 1 1 0%;
+        flex: 1;
         min-width: 0;
-        text-align: right;
     }
 
     .date-range-sep {
         flex-shrink: 0;
         font-size: 11px;
-        color: #000;
     }
 
     .meta-label {
@@ -1928,10 +1926,7 @@ select:focus {
         transform: none;
     }
 
-    .meta-row .meta-label-input {
-        text-align: left;
-    }
-
+    .meta-row input,
     .meta-row .meta-value {
         width: 100%;
         text-align: right;
