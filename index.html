@@ -24,6 +24,7 @@
                 <button class="btn btn-new" onclick="showNewInvoiceDropdown(this,'editor')">+ New ▾</button>
                 <button class="btn btn-save" onclick="saveInvoice()">💾 Save</button>
                 <button class="btn btn-template" id="saveTemplateBtn" type="button" onclick="saveAsTemplate()">Save as Template</button>
+                <select id="companyTagSelect" class="company-tag-select" onchange="setCurrentTag(this.value)"></select>
                 <button class="btn btn-print" id="printBtnFresh" type="button" onclick="printInvoice()">🖨️ Print</button>
             </div>
         </div>

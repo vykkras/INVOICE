@@ -45,6 +45,7 @@ let savedTemplates = JSON.parse(localStorage.getItem('invoiceTemplates') || '[]'
 let currentTemplateId = null;
 let _newInvoiceContext = 'home';
 let searchQuery = '';
+let currentTag = localStorage.getItem('currentTag') || '';
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
@@ -399,6 +400,7 @@ function editTemplate(templateId) {
     const invoiceLike = {
         invoiceNumber: '',
         date: '',
+        tag: template.tag || '',
         project: template.project || '',
         supervisor: template.supervisor || '',
         from: template.from || '',
@@ -421,11 +423,12 @@ function newInvoiceFromTemplate(templateId) {
     currentTemplateId = null;
     currentFolderId = currentSavedFolderId || currentFolderId || ensureDefaultFolder();
     lastOpenedFolderId = currentFolderId;
-    const newNumber = getNextClientNumber(template.billTo);
+    const newNumber = getNextTagNumber(currentTag, template.billTo);
     currentInvoiceNumber = newNumber;
     const invoiceLike = {
         invoiceNumber: newNumber,
         date: new Date().toISOString().split('T')[0],
+        tag: template.tag || '',
         project: template.project || '',
         supervisor: template.supervisor || '',
         from: template.from || '',
@@ -608,8 +611,10 @@ function saveClientCounters() {
 function rebuildClientCounters() {
     const rebuilt = {};
     savedInvoices.forEach(invoice => {
-        if (!invoice.billTo) return;
-        const key = invoice.billTo.trim().toUpperCase();
+        const rawTag = invoice.tag && invoice.tag.trim();
+        const rawClient = invoice.billTo && invoice.billTo.trim();
+        if (!rawTag && !rawClient) return;
+        const key = (rawTag || rawClient).toUpperCase();
         const num = parseInt(invoice.invoiceNumber, 10);
         if (!Number.isNaN(num)) {
             if (rebuilt[key] === undefined || num > rebuilt[key]) {
@@ -637,15 +642,16 @@ function getNextInvoiceNumber() {
     return String(maxNumber + 1).padStart(4, '0');
 }
 
-function getNextClientNumber(billTo) {
-    if (!billTo || !billTo.trim()) return '0';
-    const key = billTo.trim().toUpperCase();
+function getNextTagNumber(tag, billTo) {
+    const raw = (tag && tag.trim()) ? tag.trim() : (billTo && billTo.trim()) ? billTo.trim() : '';
+    if (!raw) return '0';
+    const key = raw.toUpperCase();
 
     const seed = CLIENT_NUMBER_SEEDS[key];
     const seedNum = seed ? parseInt(seed, 10) : 1;
     const padWidth = seed ? seed.length : 3;
 
-    // lastUsed: what was last assigned for this client (or one before the seed)
+    // lastUsed: what was last assigned for this key (or one before the seed)
     const lastUsed = clientCounters[key] !== undefined ? clientCounters[key] : seedNum - 1;
     const next = lastUsed + 1;
 
@@ -653,6 +659,45 @@ function getNextClientNumber(billTo) {
     saveClientCounters();
 
     return String(next).padStart(padWidth, '0');
+}
+
+function getCompanyList() {
+    const fromSeeds = Object.keys(CLIENT_NUMBER_SEEDS);
+    const fromInvoices = savedInvoices.map(inv => inv.tag).filter(Boolean);
+    return [...new Set([...fromSeeds, ...fromInvoices])].sort();
+}
+
+function renderCompanyTagSelect() {
+    const select = document.getElementById('companyTagSelect');
+    if (!select) return;
+    const companies = getCompanyList();
+    const prev = select.value;
+    select.innerHTML = '<option value="">— Company —</option>';
+    companies.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        select.appendChild(opt);
+    });
+    const addOpt = document.createElement('option');
+    addOpt.value = '__add__';
+    addOpt.textContent = '+ New company…';
+    select.appendChild(addOpt);
+    select.value = currentTag || prev || '';
+}
+
+function setCurrentTag(value) {
+    if (value === '__add__') {
+        const name = prompt('Company name (e.g. BPS, ITG):');
+        if (name && name.trim()) {
+            currentTag = name.trim().toUpperCase();
+            localStorage.setItem('currentTag', currentTag);
+        }
+        renderCompanyTagSelect();
+        return;
+    }
+    currentTag = value;
+    localStorage.setItem('currentTag', currentTag);
 }
 
 function formatCurrency(amount) {
@@ -854,7 +899,8 @@ function buildMetaFieldsForInvoice(invoice) {
         return {
             ...field,
             ...(existingField ? { label: existingField.label, type: existingField.type } : {}),
-            value
+            value,
+            ...(field.key === 'invoiceDate' ? { dateTo: invoice.dateTo || '' } : {})
         };
     });
     const customMeta = existing
@@ -907,8 +953,34 @@ function renderMetaFields(fields) {
         }
         input.onchange = () => calculateTotals();
 
+        inline.appendChild(input);
+
         const actions = document.createElement('div');
         actions.className = 'meta-row-actions';
+
+        if (field.key === 'invoiceDate') {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'btn-date-range-toggle';
+            toggleBtn.type = 'button';
+            toggleBtn.title = 'Add date range';
+            toggleBtn.textContent = '+';
+            toggleBtn.onclick = () => toggleDateRange(toggleBtn);
+            actions.appendChild(toggleBtn);
+
+            if (field.dateTo) {
+                const sep = document.createElement('span');
+                sep.className = 'date-range-sep';
+                sep.textContent = '→';
+                const toInput = document.createElement('input');
+                toInput.className = 'meta-value meta-value-to';
+                toInput.type = 'date';
+                toInput.value = field.dateTo;
+                inline.appendChild(sep);
+                inline.appendChild(toInput);
+                toggleBtn.textContent = '−';
+                toggleBtn.title = 'Remove date range';
+            }
+        }
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn-delete-meta';
@@ -921,13 +993,42 @@ function renderMetaFields(fields) {
         };
 
         actions.appendChild(deleteBtn);
-        inline.appendChild(input);
         inline.appendChild(actions);
 
         row.appendChild(label);
         row.appendChild(inline);
         wrapper.appendChild(row);
     });
+}
+
+function toggleDateRange(btn) {
+    const inline = btn.closest('.meta-row-actions').previousSibling;
+    // inline is the .meta-row-inline, but btn is inside actions which is inside inline
+    const row = btn.closest('.meta-row');
+    const inlineEl = row.querySelector('.meta-row-inline');
+    const existing = inlineEl.querySelector('.meta-value-to');
+
+    if (existing) {
+        inlineEl.querySelector('.date-range-sep')?.remove();
+        existing.remove();
+        btn.textContent = '+';
+        btn.title = 'Add date range';
+    } else {
+        const fromInput = inlineEl.querySelector('.meta-value');
+        const sep = document.createElement('span');
+        sep.className = 'date-range-sep';
+        sep.textContent = '→';
+        const toInput = document.createElement('input');
+        toInput.className = 'meta-value meta-value-to';
+        toInput.type = 'date';
+        toInput.value = '';
+        const actions = inlineEl.querySelector('.meta-row-actions');
+        inlineEl.insertBefore(sep, actions);
+        inlineEl.insertBefore(toInput, actions);
+        btn.textContent = '−';
+        btn.title = 'Remove date range';
+        toInput.focus();
+    }
 }
 
 function getMetaFieldsFromDOM() {
@@ -1012,9 +1113,13 @@ function collectInvoiceData() {
     const metaFields = getMetaFieldsFromDOM();
     const byKey = key => metaFields.find(field => field.key === key)?.value || '';
 
+    const dateRow = document.querySelector('#metaFields .meta-row[data-key="invoiceDate"]');
+    const dateToInput = dateRow ? dateRow.querySelector('.meta-value-to') : null;
+
     return {
         invoiceNumber: byKey('invoiceNumber'),
         date: byKey('invoiceDate'),
+        dateTo: dateToInput ? dateToInput.value : '',
         project: byKey('projectCode'),
         supervisor: byKey('supervisor'),
         from: document.getElementById('fromCompany').value,
@@ -1029,13 +1134,17 @@ function collectInvoiceData() {
 
 function saveInvoice() {
     const data = collectInvoiceData();
+    data.tag = currentTag;
 
-    // Find if invoice already exists
-    const existingIndex = savedInvoices.findIndex(inv => inv.invoiceNumber === data.invoiceNumber);
+    // Find if invoice already exists under the same tag
+    const existingIndex = savedInvoices.findIndex(inv =>
+        inv.invoiceNumber === data.invoiceNumber && (inv.tag || '') === (currentTag || '')
+    );
 
-    // Block if that number belongs to a different invoice
+    // Block if that number+tag combo belongs to a different invoice session
     if (existingIndex >= 0 && data.invoiceNumber !== currentInvoiceNumber) {
-        alert(`Invoice #${data.invoiceNumber} already exists. Change the invoice number before saving.`);
+        const tagLabel = currentTag ? ` (${currentTag})` : '';
+        alert(`Invoice #${data.invoiceNumber}${tagLabel} already exists. Change the invoice number before saving.`);
         return;
     }
 
@@ -1062,6 +1171,11 @@ function loadInvoice(data) {
     lastOpenedFolderId = data.folderId ? String(data.folderId) : null;
     currentFolderId = data.folderId || ensureDefaultFolder();
     currentInvoiceNumber = data.invoiceNumber || null;
+    if (data.tag !== undefined) {
+        currentTag = data.tag || '';
+        localStorage.setItem('currentTag', currentTag);
+        renderCompanyTagSelect();
+    }
     const fields = buildMetaFieldsForInvoice(data);
     renderMetaFields(fields);
     document.getElementById('fromCompany').value = data.from || '';
@@ -1692,6 +1806,12 @@ function renderSavedView() {
         const title = document.createElement('div');
         title.className = 'saved-item-title';
         title.textContent = `#${invoice.invoiceNumber} · ${invoice.project || '—'}`;
+        if (invoice.tag) {
+            const tagBadge = document.createElement('span');
+            tagBadge.className = 'invoice-tag-badge';
+            tagBadge.textContent = invoice.tag;
+            title.prepend(tagBadge);
+        }
 
         const meta = document.createElement('div');
         meta.className = 'saved-item-meta';
@@ -2276,6 +2396,7 @@ async function loadStateFromSupabase() {
         savedFolders = remoteFolders;
         savedInvoices = remoteInvoices;
         rebuildClientCounters();
+        renderCompanyTagSelect();
         if (!templatesRes.error && Array.isArray(templatesRes.data) && templatesRes.data.length > 0) {
             savedTemplates = templatesRes.data.map(t => ({
                 id: t.id,
@@ -2687,7 +2808,9 @@ if (!activeProfileId || !profiles.find(p => p.id === activeProfileId)) {
         normalizeInvoiceFolders();
         renderSavedView();
         renderDashboard();
+        renderCompanyTagSelect();
     });
+    renderCompanyTagSelect();
     showHome();
 }
 
