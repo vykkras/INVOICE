@@ -1928,12 +1928,12 @@ select:focus {
         transform: none;
     }
 
-    .meta-row input {
-        width: 100%;
+    .meta-row .meta-label-input {
         text-align: left;
     }
 
     .meta-row .meta-value {
+        width: 100%;
         text-align: right;
     }
 
