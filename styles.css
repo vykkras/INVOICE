@@ -1862,17 +1862,10 @@ select:focus {
         align-items: center;
         gap: 8px;
         flex: 1;
-        min-width: 0;
     }
 
     .meta-row-inline .meta-value {
         flex: 1;
-        min-width: 0;
-    }
-
-    .date-range-sep {
-        flex-shrink: 0;
-        font-size: 11px;
     }
 
     .meta-label {
