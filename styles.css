@@ -1860,15 +1860,14 @@ select:focus {
     .meta-row-inline {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
         flex: 1;
         min-width: 0;
     }
 
     .meta-row-inline .meta-value {
-        flex: 1;
+        flex: 1 1 0%;
         min-width: 0;
-        width: auto !important;
         text-align: right;
     }
 
