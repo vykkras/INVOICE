@@ -1868,7 +1868,7 @@ select:focus {
     .meta-row-inline .meta-value {
         flex: 1 1 0%;
         min-width: 0;
-        text-align: right;
+        text-align: left;
     }
 
     .date-range-sep {
@@ -1931,7 +1931,7 @@ select:focus {
     .meta-row input,
     .meta-row .meta-value {
         width: 100%;
-        text-align: right;
+        text-align: left;
     }
 
     .invoice-banner {
