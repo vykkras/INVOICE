@@ -1136,17 +1136,11 @@ function saveInvoice() {
     const data = collectInvoiceData();
     data.tag = currentTag;
 
-    // Find if invoice already exists under the same tag
+    // Find if invoice already exists (same number, same tag, same session)
     const existingIndex = savedInvoices.findIndex(inv =>
         inv.invoiceNumber === data.invoiceNumber && (inv.tag || '') === (currentTag || '')
+        && inv.invoiceNumber === currentInvoiceNumber
     );
-
-    // Block if that number+tag combo belongs to a different invoice session
-    if (existingIndex >= 0 && data.invoiceNumber !== currentInvoiceNumber) {
-        const tagLabel = currentTag ? ` (${currentTag})` : '';
-        alert(`Invoice #${data.invoiceNumber}${tagLabel} already exists. Change the invoice number before saving.`);
-        return;
-    }
 
     if (existingIndex >= 0) {
         data.folderId = savedInvoices[existingIndex].folderId || currentFolderId || ensureDefaultFolder();
