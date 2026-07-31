@@ -21,7 +21,6 @@ if (localStorage.getItem('profileJustSwitched')) {
     localStorage.removeItem('invoiceFolders');
     localStorage.removeItem('invoiceTemplates');
     localStorage.removeItem('invoiceDeleteHistory');
-    localStorage.removeItem('clientCounters');
 }
 
 // Load saved invoices from localStorage
@@ -423,7 +422,10 @@ function newInvoiceFromTemplate(templateId) {
     currentTemplateId = null;
     currentFolderId = currentSavedFolderId || currentFolderId || ensureDefaultFolder();
     lastOpenedFolderId = currentFolderId;
-    const newNumber = getNextTagNumber(currentTag, template.billTo);
+    // The company is decided by the template being used, not whatever tag was
+    // last active in the dropdown — that can be stale from unrelated prior work.
+    const key = ((template.billTo && template.billTo.trim()) || (currentTag && currentTag.trim()) || '').toUpperCase();
+    const newNumber = key ? (suggestNextInvoiceNumber(key) || '0') : '0';
     currentInvoiceNumber = newNumber;
     const invoiceLike = {
         invoiceNumber: newNumber,
@@ -440,6 +442,7 @@ function newInvoiceFromTemplate(templateId) {
         folderId: currentFolderId
     };
     loadInvoice(invoiceLike);
+    lastSuggestedInvoiceNumber = newNumber;
     updateTemplateSaveBtn();
     showEditor();
 }
@@ -600,37 +603,6 @@ const CLIENT_NUMBER_SEEDS = {
     'ITG': '033'
 };
 
-// Tracks the last assigned number per client, independent of existing invoices.
-// This avoids picking up old globally-numbered invoices as a baseline.
-let clientCounters = JSON.parse(localStorage.getItem('clientCounters') || '{}');
-
-function saveClientCounters() {
-    localStorage.setItem('clientCounters', JSON.stringify(clientCounters));
-}
-
-function rebuildClientCounters() {
-    const rebuilt = {};
-    savedInvoices.forEach(invoice => {
-        const rawTag = invoice.tag && invoice.tag.trim();
-        const rawClient = invoice.billTo && invoice.billTo.trim();
-        if (!rawTag && !rawClient) return;
-        const key = (rawTag || rawClient).toUpperCase();
-        const num = parseInt(invoice.invoiceNumber, 10);
-        if (!Number.isNaN(num)) {
-            if (rebuilt[key] === undefined || num > rebuilt[key]) {
-                rebuilt[key] = num;
-            }
-        }
-    });
-    // Only update entries where invoices give a higher baseline than what's stored
-    Object.keys(rebuilt).forEach(key => {
-        if (clientCounters[key] === undefined || rebuilt[key] > clientCounters[key]) {
-            clientCounters[key] = rebuilt[key];
-        }
-    });
-    saveClientCounters();
-}
-
 function getNextInvoiceNumber() {
     const maxNumber = savedInvoices.reduce((max, invoice) => {
         const num = parseInt(invoice.invoiceNumber, 10);
@@ -640,25 +612,6 @@ function getNextInvoiceNumber() {
         return Math.max(max, num);
     }, 0);
     return String(maxNumber + 1).padStart(4, '0');
-}
-
-function getNextTagNumber(tag, billTo) {
-    const raw = (tag && tag.trim()) ? tag.trim() : (billTo && billTo.trim()) ? billTo.trim() : '';
-    if (!raw) return '0';
-    const key = raw.toUpperCase();
-
-    const seed = CLIENT_NUMBER_SEEDS[key];
-    const seedNum = seed ? parseInt(seed, 10) : 1;
-    const padWidth = seed ? seed.length : 3;
-
-    // lastUsed: what was last assigned for this key (or one before the seed)
-    const lastUsed = clientCounters[key] !== undefined ? clientCounters[key] : seedNum - 1;
-    const next = lastUsed + 1;
-
-    clientCounters[key] = next;
-    saveClientCounters();
-
-    return String(next).padStart(padWidth, '0');
 }
 
 function getLastUsedInvoiceForCompany(key) {
@@ -696,12 +649,54 @@ function getLastUsedInvoiceForCompany(key) {
     return best !== null ? best : fallbackBest;
 }
 
-function updateLastNumberBanner() {
-    const banner = document.getElementById('lastNumberBanner');
-    if (!banner) return;
+function suggestNextInvoiceNumber(key) {
+    if (!key) return null;
+    const seed = CLIENT_NUMBER_SEEDS[key];
+    const lastUsed = getLastUsedInvoiceForCompany(key);
+
+    let lastNum, padWidth;
+    if (lastUsed) {
+        lastNum = parseInt(lastUsed, 10);
+        padWidth = seed ? seed.length : lastUsed.length;
+    } else if (seed) {
+        lastNum = parseInt(seed, 10) - 1;
+        padWidth = seed.length;
+    } else {
+        return null;
+    }
+    if (Number.isNaN(lastNum)) return null;
+
+    return String(lastNum + 1).padStart(padWidth, '0');
+}
+
+// Tracks the most recent value we auto-filled into the # field, so we only
+// overwrite it while it still holds our suggestion — never a number the user
+// typed themselves, and never a real number on an already-saved invoice.
+let lastSuggestedInvoiceNumber = null;
+
+function currentCompanyKey() {
     const billToInput = document.getElementById('billToCompany');
     const rawBillTo = billToInput ? billToInput.value : '';
     const raw = (currentTag && currentTag.trim()) ? currentTag.trim() : (rawBillTo && rawBillTo.trim()) ? rawBillTo.trim() : '';
+    return raw || null;
+}
+
+function applySuggestedInvoiceNumber() {
+    const input = document.querySelector('#metaFields .meta-row[data-key="invoiceNumber"] .meta-value');
+    if (!input) return;
+    const raw = currentCompanyKey();
+    const suggestion = raw ? suggestNextInvoiceNumber(raw.toUpperCase()) : null;
+    if (!suggestion) return;
+    if (!input.value || input.value === lastSuggestedInvoiceNumber) {
+        input.value = suggestion;
+        lastSuggestedInvoiceNumber = suggestion;
+    }
+}
+
+function updateLastNumberBanner() {
+    const banner = document.getElementById('lastNumberBanner');
+    if (!banner) return;
+    const raw = currentCompanyKey();
     const lastNumber = raw ? getLastUsedInvoiceForCompany(raw.toUpperCase()) : null;
 
     if (!lastNumber) {
@@ -711,6 +706,11 @@ function updateLastNumberBanner() {
     }
     banner.textContent = `Last invoice number used for ${raw}: ${lastNumber}`;
     banner.style.display = 'block';
+}
+
+function updateInvoiceNumberAids() {
+    updateLastNumberBanner();
+    applySuggestedInvoiceNumber();
 }
 
 function getCompanyList() {
@@ -723,7 +723,6 @@ function renderCompanyTagSelect() {
     const select = document.getElementById('companyTagSelect');
     if (!select) return;
     const companies = getCompanyList();
-    const prev = select.value;
     select.innerHTML = '<option value="">— Company —</option>';
     companies.forEach(c => {
         const opt = document.createElement('option');
@@ -735,7 +734,7 @@ function renderCompanyTagSelect() {
     addOpt.value = '__add__';
     addOpt.textContent = '+ New company…';
     select.appendChild(addOpt);
-    select.value = currentTag || prev || '';
+    select.value = currentTag || '';
 }
 
 function setCurrentTag(value) {
@@ -746,12 +745,12 @@ function setCurrentTag(value) {
             localStorage.setItem('currentTag', currentTag);
         }
         renderCompanyTagSelect();
-        updateLastNumberBanner();
+        updateInvoiceNumberAids();
         return;
     }
     currentTag = value;
     localStorage.setItem('currentTag', currentTag);
-    updateLastNumberBanner();
+    updateInvoiceNumberAids();
 }
 
 function formatCurrency(amount) {
@@ -1217,6 +1216,7 @@ function saveInvoice() {
 }
 
 function loadInvoice(data) {
+    lastSuggestedInvoiceNumber = null;
     lastOpenedFolderId = data.folderId ? String(data.folderId) : null;
     currentFolderId = data.folderId || ensureDefaultFolder();
     currentInvoiceNumber = data.invoiceNumber || null;
@@ -1243,14 +1243,14 @@ function loadInvoice(data) {
 function createNewInvoice() {
     if (confirm('Create a new invoice? Any unsaved changes will be lost.')) {
         currentTemplateId = null;
-        const newNumber = '0';
-        currentInvoiceNumber = newNumber;
+        currentInvoiceNumber = '0';
+        lastSuggestedInvoiceNumber = null;
 
         currentFolderId = currentFolderId || ensureDefaultFolder();
         const fields = getDefaultMetaFields().map(field => ({
             ...field,
             value: field.key === 'invoiceNumber'
-                ? newNumber
+                ? ''
                 : field.key === 'invoiceDate'
                 ? defaultDate
                 : ''
@@ -1260,12 +1260,13 @@ function createNewInvoice() {
         document.getElementById('billToCompany').value = '';
         document.getElementById('billToAddress').value = '';
         document.getElementById('invoiceNotes').value = '';
-        
+
         // Clear items
         document.getElementById('itemsBody').innerHTML = '';
-        
+
         // Add one empty item
         addItem();
+        applySuggestedInvoiceNumber();
         showEditor();
     }
 }
@@ -2445,7 +2446,6 @@ async function loadStateFromSupabase() {
         });
         savedFolders = remoteFolders;
         savedInvoices = remoteInvoices;
-        rebuildClientCounters();
         renderCompanyTagSelect();
         if (!templatesRes.error && Array.isArray(templatesRes.data) && templatesRes.data.length > 0) {
             savedTemplates = templatesRes.data.map(t => ({
