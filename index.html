@@ -94,6 +94,7 @@
         </div>
 
         <div class="invoice-content" id="editorView">
+            <div class="last-number-banner" id="lastNumberBanner" style="display:none"></div>
             <!-- Invoice Header -->
             <div class="invoice-header-section">
                 <div class="invoice-left">
@@ -109,7 +110,7 @@
                         <div class="bill-to">
                             <div class="section-title">Bill To</div>
                             <div class="form-group">
-                                <input type="text" id="billToCompany" placeholder="Company Name (e.g., BPS)">
+                                <input type="text" id="billToCompany" placeholder="Company Name (e.g., BPS)" oninput="updateLastNumberBanner()">
                             </div>
                             <div class="form-group">
                                 <input type="text" id="billToAddress" placeholder="Address (optional)">

@@ -439,6 +439,17 @@ body {
     background: #2e7d32;
 }
 
+.last-number-banner {
+    font-size: 12px;
+    color: #6b6b6b;
+    background: #f5f5f5;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+    width: fit-content;
+}
+
 .action-buttons {
     display: flex;
     gap: 8px;
@@ -1798,7 +1809,8 @@ select:focus {
     .template-name-dialog,
     .new-invoice-dropdown,
     .company-tag-select,
-    .invoice-tag-badge {
+    .invoice-tag-badge,
+    .last-number-banner {
         display: none !important;
     }
 

@@ -661,6 +661,58 @@ function getNextTagNumber(tag, billTo) {
     return String(next).padStart(padWidth, '0');
 }
 
+function getLastUsedInvoiceForCompany(key) {
+    const seed = CLIENT_NUMBER_SEEDS[key];
+    const padWidth = seed ? seed.length : 3;
+
+    let best = null;
+    let bestNum = -Infinity;
+    let fallbackBest = null;
+    let fallbackNum = -Infinity;
+
+    savedInvoices.forEach(invoice => {
+        const rawTag = invoice.tag && invoice.tag.trim();
+        const rawClient = invoice.billTo && invoice.billTo.trim();
+        const invKey = ((rawTag || rawClient) || '').toUpperCase();
+        if (invKey !== key) return;
+        const raw = invoice.invoiceNumber;
+        const num = parseInt(raw, 10);
+        if (Number.isNaN(num)) return;
+
+        if (num > fallbackNum) {
+            fallbackNum = num;
+            fallbackBest = raw;
+        }
+
+        // Numbers with more digits than this company's normal numbering width are
+        // almost always stray one-off/typo entries, not real sequence continuations
+        // (e.g. BPS runs ~0700s but a couple of test invoices got saved as 45655/45657).
+        if (String(raw).length <= padWidth && num > bestNum) {
+            bestNum = num;
+            best = raw;
+        }
+    });
+
+    return best !== null ? best : fallbackBest;
+}
+
+function updateLastNumberBanner() {
+    const banner = document.getElementById('lastNumberBanner');
+    if (!banner) return;
+    const billToInput = document.getElementById('billToCompany');
+    const rawBillTo = billToInput ? billToInput.value : '';
+    const raw = (currentTag && currentTag.trim()) ? currentTag.trim() : (rawBillTo && rawBillTo.trim()) ? rawBillTo.trim() : '';
+    const lastNumber = raw ? getLastUsedInvoiceForCompany(raw.toUpperCase()) : null;
+
+    if (!lastNumber) {
+        banner.style.display = 'none';
+        banner.textContent = '';
+        return;
+    }
+    banner.textContent = `Last invoice number used for ${raw}: ${lastNumber}`;
+    banner.style.display = 'block';
+}
+
 function getCompanyList() {
     const fromSeeds = Object.keys(CLIENT_NUMBER_SEEDS);
     const fromInvoices = savedInvoices.map(inv => inv.tag).filter(Boolean);
@@ -694,10 +746,12 @@ function setCurrentTag(value) {
             localStorage.setItem('currentTag', currentTag);
         }
         renderCompanyTagSelect();
+        updateLastNumberBanner();
         return;
     }
     currentTag = value;
     localStorage.setItem('currentTag', currentTag);
+    updateLastNumberBanner();
 }
 
 function formatCurrency(amount) {
@@ -828,6 +882,7 @@ function showEditor() {
     document.getElementById('editorView').style.display = 'block';
     document.getElementById('savedView').style.display = 'none';
     document.querySelector('.invoice-actions').style.display = 'flex';
+    updateLastNumberBanner();
 }
 
 function showSavedView() {
@@ -1182,6 +1237,7 @@ function loadInvoice(data) {
     
     // Add items
     data.items.forEach(item => addItem(item));
+    updateLastNumberBanner();
 }
 
 function createNewInvoice() {
