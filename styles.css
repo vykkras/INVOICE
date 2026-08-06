@@ -778,6 +778,32 @@ body {
     color: #80868b;
 }
 
+.search-result-profile {
+    font-size: 11px;
+    color: #FF6B35;
+    font-weight: 600;
+}
+
+.search-all-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #5f6368;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.search-all-toggle input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.cross-profile-item {
+    background: #fafafa;
+    cursor: default;
+}
+
 /* ── Drive-style file list ───────────────────── */
 
 .saved-list {

@@ -44,6 +44,9 @@ let savedTemplates = JSON.parse(localStorage.getItem('invoiceTemplates') || '[]'
 let currentTemplateId = null;
 let _newInvoiceContext = 'home';
 let searchQuery = '';
+let searchAllProfiles = false;
+let crossProfileCache = null; // { [workspaceId]: { profileName, invoices, folders } }
+let crossProfileLoading = false;
 let currentTag = localStorage.getItem('currentTag') || '';
 
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
@@ -569,18 +572,23 @@ function normalizeInvoiceFolders() {
     }
 }
 
-function getFolderById(folderId) {
-    return savedFolders.find(folder => folder.id === folderId) || null;
+function getFolderById(folderId, foldersList = savedFolders) {
+    return foldersList.find(folder => String(folder.id) === String(folderId)) || null;
 }
 
-function getFolderPath(folderId) {
+function getFolderPath(folderId, foldersList = savedFolders) {
     const path = [];
-    let current = folderId ? getFolderById(folderId) : null;
+    let current = folderId ? getFolderById(folderId, foldersList) : null;
     while (current) {
         path.unshift(current);
-        current = current.parentId ? getFolderById(current.parentId) : null;
+        current = current.parentId ? getFolderById(current.parentId, foldersList) : null;
     }
     return path;
+}
+
+function formatFolderPathLabel(folderId, foldersList = savedFolders) {
+    const path = getFolderPath(folderId, foldersList);
+    return path.length ? path.map(f => f.name).join(' / ') : 'Saved Invoices (root)';
 }
 
 function getDescendantFolderIds(folderId) {
@@ -1605,10 +1613,40 @@ function renderSavedView() {
 
     let foldersHere, invoicesHere, templatesVisible;
 
-    if (searchQuery) {
+    if (searchQuery && searchAllProfiles) {
+        foldersHere = [];
+        templatesVisible = false;
+        const q = searchQuery.toLowerCase();
+
+        if (crossProfileLoading || !crossProfileCache) {
+            invoicesHere = [];
+            const label = document.createElement('span');
+            label.className = 'search-result-label';
+            label.textContent = 'Loading all profiles…';
+            breadcrumbs.appendChild(label);
+        } else {
+            invoicesHere = [];
+            Object.entries(crossProfileCache).forEach(([workspaceId, ws]) => {
+                ws.invoices.filter(inv => matchesSearch(inv, q)).forEach(inv => {
+                    invoicesHere.push(Object.assign({}, inv, {
+                        _crossProfile: true,
+                        _workspaceId: workspaceId,
+                        _profileName: ws.profileName,
+                        _pathLabel: formatFolderPathLabel(inv.folderId, ws.folders)
+                    }));
+                });
+            });
+            const label = document.createElement('span');
+            label.className = 'search-result-label';
+            label.textContent = `${invoicesHere.length} result${invoicesHere.length !== 1 ? 's' : ''} across all profiles for "${searchQuery}"`;
+            breadcrumbs.appendChild(label);
+        }
+    } else if (searchQuery) {
         const q = searchQuery.toLowerCase();
         foldersHere = [];
-        invoicesHere = savedInvoices.filter(inv => matchesSearch(inv, q));
+        invoicesHere = savedInvoices.filter(inv => matchesSearch(inv, q)).map(inv => Object.assign({}, inv, {
+            _pathLabel: formatFolderPathLabel(inv.folderId)
+        }));
         templatesVisible = false;
 
         const label = document.createElement('span');
@@ -1826,6 +1864,67 @@ function renderSavedView() {
     }
 
     invoicesHere.forEach(invoice => {
+        if (invoice._crossProfile) {
+            const item = document.createElement('div');
+            item.className = `saved-item invoice-item cross-profile-item ${invoice.paid ? 'paid' : 'unpaid'}`;
+            item.dataset.invoiceNumber = invoice.invoiceNumber;
+
+            const icon = document.createElement('div');
+            icon.className = 'item-type-icon';
+            icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#5f6368" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
+
+            const title = document.createElement('div');
+            title.className = 'saved-item-title';
+            title.textContent = `#${invoice.invoiceNumber} · ${invoice.project || '—'}`;
+
+            const meta = document.createElement('div');
+            meta.className = 'saved-item-meta';
+            const date = document.createElement('span');
+            date.textContent = invoice.date || '';
+            const amountSpan = document.createElement('span');
+            amountSpan.textContent = formatCurrency(getInvoiceTotal(invoice));
+            const profileSpan = document.createElement('span');
+            profileSpan.className = 'search-result-profile';
+            profileSpan.textContent = '👤 ' + invoice._profileName;
+            const pathSpan = document.createElement('span');
+            pathSpan.className = 'search-result-folder';
+            pathSpan.textContent = '📁 ' + invoice._pathLabel;
+            meta.appendChild(date);
+            meta.appendChild(amountSpan);
+            meta.appendChild(profileSpan);
+            meta.appendChild(pathSpan);
+
+            const info = document.createElement('div');
+            info.className = 'saved-item-info';
+            info.appendChild(title);
+            info.appendChild(meta);
+
+            const badge = document.createElement('div');
+            badge.className = `item-paid-badge ${invoice.paid ? 'is-paid' : 'is-unpaid'}`;
+            badge.textContent = invoice.paid ? 'Paid' : 'Unpaid';
+
+            item.appendChild(icon);
+            item.appendChild(info);
+            item.appendChild(badge);
+
+            if (isAdminProfile()) {
+                const actions = document.createElement('div');
+                actions.className = 'saved-item-actions';
+                const goToBtn = document.createElement('button');
+                goToBtn.className = 'btn btn-save';
+                goToBtn.textContent = 'Go to profile';
+                goToBtn.onclick = event => {
+                    event.stopPropagation();
+                    goToCrossProfileResult(invoice._workspaceId, invoice.folderId);
+                };
+                actions.appendChild(goToBtn);
+                item.appendChild(actions);
+            }
+
+            list.appendChild(item);
+            return;
+        }
+
         const item = document.createElement('div');
         item.className = `saved-item invoice-item ${invoice.paid ? 'paid' : 'unpaid'}${invoice.waf ? ' waf' : ''}`;
         item.dataset.invoiceNumber = invoice.invoiceNumber;
@@ -1872,14 +1971,11 @@ function renderSavedView() {
         amountSpan.textContent = formatCurrency(getInvoiceTotal(invoice));
         meta.appendChild(date);
         meta.appendChild(amountSpan);
-        if (searchQuery && invoice.folderId) {
-            const folder = getFolderById(invoice.folderId);
-            if (folder) {
-                const folderSpan = document.createElement('span');
-                folderSpan.className = 'search-result-folder';
-                folderSpan.textContent = '📁 ' + folder.name;
-                meta.appendChild(folderSpan);
-            }
+        if (searchQuery && invoice._pathLabel) {
+            const folderSpan = document.createElement('span');
+            folderSpan.className = 'search-result-folder';
+            folderSpan.textContent = '📁 ' + invoice._pathLabel;
+            meta.appendChild(folderSpan);
         }
 
         const info = document.createElement('div');
@@ -1996,6 +2092,10 @@ function toggleInvoiceWaf(invoiceNumber) {
 
 function matchesSearch(invoice, q) {
     if (!q) return true;
+    const amountQuery = q.replace(/^\$/, '').replace(/,/g, '');
+    const total = getInvoiceTotal(invoice);
+    const totalWithCents = total.toFixed(2);
+    const totalWhole = String(Math.trunc(total));
     return (
         (invoice.invoiceNumber || '').toLowerCase().includes(q) ||
         (invoice.project || '').toLowerCase().includes(q) ||
@@ -2003,6 +2103,7 @@ function matchesSearch(invoice, q) {
         (invoice.from || '').toLowerCase().includes(q) ||
         (invoice.date || '').toLowerCase().includes(q) ||
         (invoice.notes || '').toLowerCase().includes(q) ||
+        (amountQuery && (totalWithCents.includes(amountQuery) || totalWhole.includes(amountQuery))) ||
         (Array.isArray(invoice.items) && invoice.items.some(item =>
             (item.description || '').toLowerCase().includes(q)
         ))
@@ -2012,6 +2113,117 @@ function matchesSearch(invoice, q) {
 function handleSearch(value) {
     searchQuery = value.trim();
     renderSavedView();
+}
+
+async function handleSearchAllProfilesToggle(checked) {
+    searchAllProfiles = checked;
+    if (checked) {
+        crossProfileCache = null;
+        crossProfileLoading = true;
+        renderSavedView();
+        await loadCrossProfileSearchCache();
+        crossProfileLoading = false;
+    }
+    renderSavedView();
+}
+
+async function fetchWorkspaceSearchData(workspaceId) {
+    if (!supabaseClient) return { invoices: [], folders: [] };
+    try {
+        const allItems = [];
+        const pageSize = 1000;
+        let offset = 0;
+        while (true) {
+            const { data, error } = await supabaseClient
+                .from('invoice_items')
+                .select('invoice_number, position, description, quantity, rate')
+                .eq('workspace_id', workspaceId)
+                .order('position', { ascending: true })
+                .range(offset, offset + pageSize - 1);
+            if (error || !data) break;
+            allItems.push(...data);
+            if (data.length < pageSize) break;
+            offset += pageSize;
+        }
+        const [foldersRes, invoicesRes] = await Promise.all([
+            supabaseClient.from('invoice_folders').select('id, name, parent_id').eq('workspace_id', workspaceId),
+            supabaseClient
+                .from('invoices')
+                .select('invoice_number, date, project, supervisor, from_company, bill_to, bill_to_address, notes, meta_fields, paid, folder_id')
+                .eq('workspace_id', workspaceId)
+        ]);
+        const itemsByInvoice = new Map();
+        allItems.forEach(item => {
+            const key = String(item.invoice_number || '');
+            if (!itemsByInvoice.has(key)) itemsByInvoice.set(key, []);
+            itemsByInvoice.get(key).push({
+                description: item.description || '',
+                quantity: Number(item.quantity) || 0,
+                rate: Number(item.rate) || 0
+            });
+        });
+        const folders = (foldersRes.data || []).map(f => ({
+            id: String(f.id),
+            name: f.name || '',
+            parentId: f.parent_id ? String(f.parent_id) : null
+        }));
+        const invoices = (invoicesRes.data || []).map(inv => ({
+            invoiceNumber: String(inv.invoice_number || ''),
+            date: inv.date || '',
+            project: inv.project || '',
+            billTo: inv.bill_to || '',
+            from: inv.from_company || '',
+            notes: inv.notes || '',
+            items: itemsByInvoice.get(String(inv.invoice_number || '')) || [],
+            paid: Boolean(inv.paid),
+            folderId: inv.folder_id ? String(inv.folder_id) : null
+        }));
+        return { invoices, folders };
+    } catch (error) {
+        console.warn('Cross-profile fetch failed for workspace', workspaceId, error);
+        return { invoices: [], folders: [] };
+    }
+}
+
+async function loadCrossProfileSearchCache() {
+    if (!supabaseClient) {
+        crossProfileCache = {};
+        return;
+    }
+    const workspaceMap = new Map(); // workspaceId -> profileName
+    profiles.forEach(p => {
+        if (!workspaceMap.has(p.workspaceId)) workspaceMap.set(p.workspaceId, p.name);
+    });
+    if (!workspaceMap.has(getWorkspaceId())) {
+        const current = getActiveProfile();
+        workspaceMap.set(getWorkspaceId(), current ? current.name : 'You');
+    }
+    const cache = {};
+    await Promise.all(Array.from(workspaceMap.entries()).map(async ([workspaceId, profileName]) => {
+        const data = await fetchWorkspaceSearchData(workspaceId);
+        cache[workspaceId] = { profileName, invoices: data.invoices, folders: data.folders };
+    }));
+    crossProfileCache = cache;
+}
+
+function goToCrossProfileResult(workspaceId, folderId) {
+    const targetProfile = profiles.find(p => p.workspaceId === workspaceId);
+    if (!targetProfile) return;
+    localStorage.setItem('pendingSavedFolderNav', folderId || '');
+    if (targetProfile.id === activeProfileId) {
+        currentSavedFolderId = folderId || null;
+        searchQuery = '';
+        searchAllProfiles = false;
+        const input = document.getElementById('invoiceSearch');
+        if (input) input.value = '';
+        const toggle = document.getElementById('searchAllProfilesToggle');
+        if (toggle) toggle.checked = false;
+        localStorage.removeItem('pendingSavedFolderNav');
+        showSavedView();
+        renderSavedView();
+        return;
+    }
+    enterProfileAsAdmin(targetProfile.id);
 }
 
 function navigateFolder(folderId) {
@@ -2854,14 +3066,23 @@ if (!activeProfileId || !profiles.find(p => p.id === activeProfileId)) {
     updateProfileIndicator();
     checkAdminReturn();
     loadProfilesFromSupabase();
+    const pendingFolderNav = localStorage.getItem('pendingSavedFolderNav');
+    const hasPendingNav = pendingFolderNav !== null;
+    if (hasPendingNav) localStorage.removeItem('pendingSavedFolderNav');
     loadStateFromSupabase().then(() => {
         normalizeInvoiceFolders();
+        if (hasPendingNav) {
+            currentSavedFolderId = pendingFolderNav || null;
+            showSavedView();
+        }
         renderSavedView();
         renderDashboard();
         renderCompanyTagSelect();
     });
     renderCompanyTagSelect();
-    showHome();
+    if (!hasPendingNav) {
+        showHome();
+    }
 }
 
 window.addEventListener('beforeprint', () => {
