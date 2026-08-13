@@ -43,6 +43,13 @@ let pendingDuplicate = null;
 let savedTemplates = JSON.parse(localStorage.getItem('invoiceTemplates') || '[]');
 let currentTemplateId = null;
 let _newInvoiceContext = 'home';
+
+// ── Billing entity (company letterhead) ─────────────────────────────────────
+const BILLING_ENTITIES = {
+    'dc-cable': { label: 'DC Cable', line1: 'DC', line2: 'CABLE', tagline: 'AUTHORIZED CONTRACTOR' },
+    'cable-services-pro': { label: 'Cable Services Pro', line1: 'CABLE', line2: 'SERVICES PRO', tagline: 'AUTHORIZED CONTRACTOR' }
+};
+let currentBillingEntity = 'dc-cable';
 let searchQuery = '';
 let searchAllProfiles = false;
 let crossProfileCache = null; // { [workspaceId]: { profileName, invoices, folders } }
@@ -377,7 +384,7 @@ function confirmSaveTemplate() {
     const isUpdate = existing && name === existing.name;
     const id = isUpdate ? currentTemplateId : ('template-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
     const data = collectInvoiceData();
-    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor };
+    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor, billingEntity: currentBillingEntity };
     const idx = savedTemplates.findIndex(t => t.id === id);
     if (idx >= 0) {
         savedTemplates[idx] = template;
@@ -411,6 +418,7 @@ function editTemplate(templateId) {
         notes: template.notes || '',
         items: Array.isArray(template.items) ? template.items.map(i => ({ ...i })) : [],
         metaFields: Array.isArray(template.metaFields) ? template.metaFields.map(f => ({ ...f })) : [],
+        billingEntity: template.billingEntity || 'dc-cable',
         folderId: null
     };
     loadInvoice(invoiceLike);
@@ -442,6 +450,7 @@ function newInvoiceFromTemplate(templateId) {
         notes: template.notes || '',
         items: Array.isArray(template.items) ? JSON.parse(JSON.stringify(template.items)) : [],
         metaFields: Array.isArray(template.metaFields) ? template.metaFields.map(f => ({ ...f })) : [],
+        billingEntity: template.billingEntity || 'dc-cable',
         folderId: currentFolderId
     };
     loadInvoice(invoiceLike);
@@ -527,6 +536,47 @@ function startBlankInvoice() {
 }
 
 // ── End templates ─────────────────────────────────────────────────────────────
+
+// ── Billing entity ───────────────────────────────────────────────────────────
+
+function renderBillingLogo(entity) {
+    const cfg = BILLING_ENTITIES[entity] || BILLING_ENTITIES['dc-cable'];
+    const l1 = document.getElementById('logoLine1');
+    const l2 = document.getElementById('logoLine2');
+    const tag = document.getElementById('logoTagline');
+    if (l1) l1.textContent = cfg.line1;
+    if (l2) l2.textContent = cfg.line2;
+    if (tag) tag.textContent = cfg.tagline;
+}
+
+function updateBillingEntityToggleUI(entity) {
+    document.querySelectorAll('.billing-entity-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.entity === entity);
+    });
+}
+
+// Used when loading a saved invoice/template — restores the stored choice
+// without touching the (separately-saved) From field text.
+function applyBillingEntityState(entity) {
+    currentBillingEntity = BILLING_ENTITIES[entity] ? entity : 'dc-cable';
+    renderBillingLogo(currentBillingEntity);
+    updateBillingEntityToggleUI(currentBillingEntity);
+}
+
+// Used when the user clicks a toggle button — also fills the From field with
+// the matching legal name so the letterhead and From line always agree.
+function setBillingEntity(entity) {
+    if (!BILLING_ENTITIES[entity]) return;
+    applyBillingEntityState(entity);
+    const fromInput = document.getElementById('fromCompany');
+    if (fromInput) fromInput.value = BILLING_ENTITIES[entity].label;
+    localStorage.setItem('lastBillingEntity', entity);
+}
+
+function resetBillingEntityToDefault() {
+    const stored = localStorage.getItem('lastBillingEntity');
+    applyBillingEntityState(stored && BILLING_ENTITIES[stored] ? stored : 'dc-cable');
+}
 
 function createFolderData(name) {
     return {
@@ -1197,6 +1247,7 @@ function collectInvoiceData() {
 function saveInvoice() {
     const data = collectInvoiceData();
     data.tag = currentTag;
+    data.billingEntity = currentBillingEntity;
 
     // Find if invoice already exists (same number, same tag, same session)
     const existingIndex = savedInvoices.findIndex(inv =>
@@ -1233,6 +1284,7 @@ function loadInvoice(data) {
         localStorage.setItem('currentTag', currentTag);
         renderCompanyTagSelect();
     }
+    applyBillingEntityState(data.billingEntity || 'dc-cable');
     const fields = buildMetaFieldsForInvoice(data);
     renderMetaFields(fields);
     document.getElementById('fromCompany').value = data.from || '';
@@ -1264,6 +1316,7 @@ function createNewInvoice() {
                 : ''
         }));
         renderMetaFields(fields);
+        resetBillingEntityToDefault();
         document.getElementById('fromCompany').value = '';
         document.getElementById('billToCompany').value = '';
         document.getElementById('billToAddress').value = '';
@@ -1473,6 +1526,7 @@ function startNewInvoiceFromHome() {
             : ''
     }));
     renderMetaFields(fields);
+    resetBillingEntityToDefault();
     document.getElementById('fromCompany').value = '';
     document.getElementById('billToCompany').value = '';
     document.getElementById('billToAddress').value = '';
@@ -1498,6 +1552,7 @@ function startNewInvoiceInSavedFolder() {
             : ''
     }));
     renderMetaFields(fields);
+    resetBillingEntityToDefault();
     document.getElementById('fromCompany').value = '';
     document.getElementById('billToCompany').value = '';
     document.getElementById('billToAddress').value = '';
