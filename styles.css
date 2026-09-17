@@ -1546,6 +1546,39 @@ select:focus {
     width: fit-content;
 }
 
+.doc-type-toggle {
+    display: flex;
+    gap: 4px;
+    background: #f1f3f4;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 10px;
+    width: fit-content;
+}
+
+.doc-type-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #5f6368;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.doc-type-btn:hover {
+    color: #202124;
+}
+
+.doc-type-btn.active {
+    background: #fff;
+    color: #FF6B35;
+    box-shadow: 0 1px 2px rgba(17,24,39,0.1);
+}
+
 .billing-entity-btn {
     border: none;
     background: transparent;
@@ -1870,7 +1903,8 @@ select:focus {
     .company-tag-select,
     .invoice-tag-badge,
     .last-number-banner,
-    .billing-entity-toggle {
+    .billing-entity-toggle,
+    .doc-type-toggle {
         display: none !important;
     }
 

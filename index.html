@@ -102,7 +102,11 @@
             <!-- Invoice Header -->
             <div class="invoice-header-section">
                 <div class="invoice-left">
-                    <div class="invoice-title">INVOICE</div>
+                    <div class="doc-type-toggle" id="docTypeToggle">
+                        <button type="button" class="doc-type-btn active" data-doctype="invoice" onclick="setDocType('invoice')">Invoice</button>
+                        <button type="button" class="doc-type-btn" data-doctype="quote" onclick="setDocType('quote')">Quote</button>
+                    </div>
+                    <div class="invoice-title" id="invoiceTitle">INVOICE</div>
                     <!-- Billing Section -->
                     <div class="billing-section">
                         <div class="bill-to">

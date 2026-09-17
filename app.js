@@ -50,6 +50,10 @@ const BILLING_ENTITIES = {
     'cable-services-pro': { label: 'Cable Services Pro', line1: 'CABLE', line2: 'SERVICES PRO', tagline: 'AUTHORIZED CONTRACTOR' }
 };
 let currentBillingEntity = 'dc-cable';
+
+// ── Document type (Invoice / Quote) ─────────────────────────────────────────
+const DOC_TYPE_LABELS = { invoice: 'INVOICE', quote: 'QUOTE' };
+let currentDocType = 'invoice';
 let searchQuery = '';
 let searchAllProfiles = false;
 let crossProfileCache = null; // { [workspaceId]: { profileName, invoices, folders } }
@@ -384,7 +388,7 @@ function confirmSaveTemplate() {
     const isUpdate = existing && name === existing.name;
     const id = isUpdate ? currentTemplateId : ('template-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
     const data = collectInvoiceData();
-    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor, billingEntity: currentBillingEntity };
+    const template = { id, name, from: data.from, billTo: data.billTo, billToAddress: data.billToAddress, notes: data.notes, items: data.items, metaFields: data.metaFields, project: data.project, supervisor: data.supervisor, billingEntity: currentBillingEntity, docType: currentDocType };
     const idx = savedTemplates.findIndex(t => t.id === id);
     if (idx >= 0) {
         savedTemplates[idx] = template;
@@ -419,6 +423,7 @@ function editTemplate(templateId) {
         items: Array.isArray(template.items) ? template.items.map(i => ({ ...i })) : [],
         metaFields: Array.isArray(template.metaFields) ? template.metaFields.map(f => ({ ...f })) : [],
         billingEntity: template.billingEntity || 'dc-cable',
+        docType: template.docType || 'invoice',
         folderId: null
     };
     loadInvoice(invoiceLike);
@@ -451,6 +456,7 @@ function newInvoiceFromTemplate(templateId) {
         items: Array.isArray(template.items) ? JSON.parse(JSON.stringify(template.items)) : [],
         metaFields: Array.isArray(template.metaFields) ? template.metaFields.map(f => ({ ...f })) : [],
         billingEntity: template.billingEntity || 'dc-cable',
+        docType: template.docType || 'invoice',
         folderId: currentFolderId
     };
     loadInvoice(invoiceLike);
@@ -576,6 +582,34 @@ function setBillingEntity(entity) {
 function resetBillingEntityToDefault() {
     const stored = localStorage.getItem('lastBillingEntity');
     applyBillingEntityState(stored && BILLING_ENTITIES[stored] ? stored : 'dc-cable');
+}
+
+// ── Document type (Invoice / Quote) ─────────────────────────────────────────
+
+function updateDocTypeToggleUI(type) {
+    document.querySelectorAll('.doc-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.doctype === type);
+    });
+}
+
+// Used when loading a saved invoice/template — restores the stored choice.
+function applyDocTypeState(type) {
+    currentDocType = DOC_TYPE_LABELS[type] ? type : 'invoice';
+    updateDocTypeToggleUI(currentDocType);
+    const titleEl = document.getElementById('invoiceTitle');
+    if (titleEl) titleEl.textContent = DOC_TYPE_LABELS[currentDocType];
+}
+
+// Used when the user clicks the toggle button.
+function setDocType(type) {
+    if (!DOC_TYPE_LABELS[type]) return;
+    applyDocTypeState(type);
+    localStorage.setItem('lastDocType', type);
+}
+
+function resetDocTypeToDefault() {
+    const stored = localStorage.getItem('lastDocType');
+    applyDocTypeState(stored && DOC_TYPE_LABELS[stored] ? stored : 'invoice');
 }
 
 function createFolderData(name) {
@@ -1248,6 +1282,7 @@ function saveInvoice() {
     const data = collectInvoiceData();
     data.tag = currentTag;
     data.billingEntity = currentBillingEntity;
+    data.docType = currentDocType;
 
     // Find if invoice already exists (same number, same tag, same session)
     const existingIndex = savedInvoices.findIndex(inv =>
@@ -1285,6 +1320,7 @@ function loadInvoice(data) {
         renderCompanyTagSelect();
     }
     applyBillingEntityState(data.billingEntity || 'dc-cable');
+    applyDocTypeState(data.docType || 'invoice');
     const fields = buildMetaFieldsForInvoice(data);
     renderMetaFields(fields);
     document.getElementById('fromCompany').value = data.from || '';
@@ -1317,6 +1353,7 @@ function createNewInvoice() {
         }));
         renderMetaFields(fields);
         resetBillingEntityToDefault();
+        resetDocTypeToDefault();
         document.getElementById('fromCompany').value = '';
         document.getElementById('billToCompany').value = '';
         document.getElementById('billToAddress').value = '';
@@ -1527,6 +1564,7 @@ function startNewInvoiceFromHome() {
     }));
     renderMetaFields(fields);
     resetBillingEntityToDefault();
+    resetDocTypeToDefault();
     document.getElementById('fromCompany').value = '';
     document.getElementById('billToCompany').value = '';
     document.getElementById('billToAddress').value = '';
@@ -1553,6 +1591,7 @@ function startNewInvoiceInSavedFolder() {
     }));
     renderMetaFields(fields);
     resetBillingEntityToDefault();
+    resetDocTypeToDefault();
     document.getElementById('fromCompany').value = '';
     document.getElementById('billToCompany').value = '';
     document.getElementById('billToAddress').value = '';
