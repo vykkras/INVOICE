@@ -2941,23 +2941,22 @@ function renderBoreLogPrintHtml(row) {
 
 function printBoreLog(row) {
     const html = renderBoreLogPrintHtml(row);
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(iframe);
-    const win = iframe.contentWindow;
-    if (!win) { iframe.remove(); return; }
+
+    // A hidden, zero-size iframe (the old approach) is reliable on desktop
+    // Chrome but frequently prints blank on mobile browsers — especially
+    // iOS Safari — since a 0x0 off-screen frame often never gets a real
+    // layout/paint pass before print() fires. Opening a real tab renders
+    // properly on both desktop and mobile.
+    const win = window.open('', '_blank');
+    if (!win) {
+        alert('Your browser blocked the print tab — please allow pop-ups for this site and try again.');
+        return;
+    }
+    win.onload = () => win.print();
     win.document.open();
     win.document.write(html);
     win.document.close();
     win.focus();
-    win.print();
-    setTimeout(() => iframe.remove(), 500);
 }
 
 function copyBoreLogLink() {
