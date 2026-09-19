@@ -86,9 +86,6 @@
   .field input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
 
   .stations-panel{background:var(--surface-alt);border-radius:14px;padding:16px 14px 18px;border:1px solid var(--border);}
-  .stations-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
-  .stations-head .legend-inline{font-size:13px;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;color:var(--ink-soft);}
-  .stations-fill{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
   .stations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;}
   .station-cell{display:flex;flex-direction:column;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;overflow:hidden;}
   .station-cell:focus-within{border-color:var(--accent);}
@@ -136,10 +133,6 @@
     </div>
 
     <div class="stations-panel">
-      <div class="stations-head">
-        <span class="legend-inline">Depth readings</span>
-        <span class="stations-fill" id="stationsFillCount">0 / 0 filled</span>
-      </div>
       <div class="stations-grid" id="stationsGrid"></div>
     </div>
 
@@ -199,7 +192,7 @@
 
   var el = {};
   ['stepsDots','footageValue','presets','minusBtn','plusBtn','startLogBtn',
-   'boreForm','stationsGrid','stationsFillCount','submitBtn','submitNote'
+   'boreForm','stationsGrid','submitBtn','submitNote'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
   function show(id){
@@ -256,16 +249,11 @@
         var v = input.value;
         if (v === '') { delete depths[ft]; cell.classList.remove('filled'); }
         else { depths[ft] = parseFloat(v); cell.classList.add('filled'); }
-        updateFillCount(stations.length);
       });
       cell.appendChild(label);
       cell.appendChild(input);
       el.stationsGrid.appendChild(cell);
     });
-    updateFillCount(stations.length);
-  }
-  function updateFillCount(total){
-    el.stationsFillCount.textContent = Object.keys(depths).length + ' / ' + total + ' filled';
   }
   function fieldVal(id){ return document.getElementById(id).value.trim(); }
 

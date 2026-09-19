@@ -2629,17 +2629,11 @@ function buildBoreLogStationsGrid(reset) {
             const v = input.value;
             if (v === '') { delete boreLogDepths[ft]; cell.classList.remove('filled'); }
             else { boreLogDepths[ft] = parseFloat(v); cell.classList.add('filled'); }
-            updateBoreLogFillCount(stations.length);
         };
         cell.appendChild(label);
         cell.appendChild(input);
         grid.appendChild(cell);
     });
-    updateBoreLogFillCount(stations.length);
-}
-
-function updateBoreLogFillCount(total) {
-    document.getElementById('boreLogFillCount').textContent = Object.keys(boreLogDepths).length + ' / ' + total + ' filled';
 }
 
 function openBoreLogWizard(id, data) {
@@ -2855,10 +2849,25 @@ async function deleteBoreLog(id, btn) {
 
 function renderBoreLogPrintHtml(row) {
     const esc = escapeHtml;
-    const stationsHtml = (row.stations || []).map(s => {
-        const val = (s.depth === null || s.depth === undefined) ? '' : s.depth;
-        return `<div class="bps-cell"><div class="bps-cell-val">${esc(val)}</div><div class="bps-cell-lbl">${s.station}'</div></div>`;
-    }).join('');
+
+    // Print always shows the full paper-form template (10' through at
+    // least 600', matching the original blank form) rather than cutting
+    // off at this job's footage — the actual end-of-bore station is
+    // highlighted instead, same as marking a stopping point on paper.
+    const PRINT_MIN_RANGE = 600;
+    const footage = row.footage || 0;
+    const printRange = Math.max(PRINT_MIN_RANGE, footage);
+    const depthByStation = {};
+    (row.stations || []).forEach(s => { depthByStation[s.station] = s.depth; });
+
+    const cells = [];
+    for (let ft = BORE_LOG_STEP_FT; ft <= printRange; ft += BORE_LOG_STEP_FT) {
+        const d = depthByStation[ft];
+        const val = (d === null || d === undefined) ? '' : d;
+        const isEnd = ft === footage;
+        cells.push(`<div class="bps-cell${isEnd ? ' bps-cell-end' : ''}"><div class="bps-cell-val">${esc(val)}</div><div class="bps-cell-lbl">${ft}'</div></div>`);
+    }
+    const stationsHtml = cells.join('');
 
     const title = 'HDD Bore Log' + (row.company ? ' — ' + row.company : '');
 
@@ -2885,6 +2894,8 @@ function renderBoreLogPrintHtml(row) {
   .bps-cell { display: flex; flex-direction: column; border: 1px solid #999; border-radius: 3px; overflow: hidden; break-inside: avoid; }
   .bps-cell-val { background: #ffd9c2; text-align: center; font-size: 12px; padding: 6px 0; min-height: 18px; }
   .bps-cell-lbl { text-align: center; font-size: 10px; padding: 2px 0; color: #333; }
+  .bps-cell-end { border: 2px solid #FF6B35; box-shadow: 0 0 0 1px #FF6B35; }
+  .bps-cell-end .bps-cell-lbl { background: #FF6B35; color: #fff; font-weight: 700; }
   .bps-footer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 28px; padding: 26px 24px 0; }
   .bps-footer-item { font-size: 12px; }
   .bps-footer-item b { display: block; text-transform: uppercase; letter-spacing: 1px; font-size: 10.5px; color: #555; margin-bottom: 2px; }
