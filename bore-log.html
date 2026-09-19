@@ -42,6 +42,7 @@
   .step-dot.active{background:var(--accent);transform:scale(1.3);}
   .step-dot.done{background:var(--accent);}
   .back-btn{border:none;background:none;color:var(--ink-soft);font-family:inherit;font-size:16px;font-weight:600;display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px;}
+  .borelog-back-link{border:none;background:none;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;margin-bottom:4px;text-decoration:underline;align-self:flex-start;}
 
   .screen{flex:1;display:flex;flex-direction:column;padding:22px 18px 28px;gap:22px;}
   .eyebrow{text-transform:uppercase;font-size:12px;letter-spacing:1.6px;color:var(--ink-soft);font-weight:600;}
@@ -58,7 +59,7 @@
   .btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow);}
   .btn-primary:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
 
-  .footage-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;text-align:center;}
+  .footage-stage{display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center;}
   .footage-dial{display:flex;align-items:center;gap:18px;}
   .dial-btn{
     width:56px;height:56px;border-radius:50%;border:1.5px solid var(--border);
@@ -121,8 +122,8 @@
   <section class="screen" id="screen-footage">
     <div>
       <div class="eyebrow">Step 1 of 2</div>
-      <h1>Total footage</h1>
-      <p class="sub">Set the planned bore length. This sets how many 10&#39; stations you&#39;ll log.</p>
+      <h1>Depth readings</h1>
+      <p class="sub">Set the total footage, then log a depth at each 10&#39; station.</p>
     </div>
     <div class="footage-stage">
       <div class="footage-dial">
@@ -132,16 +133,25 @@
       </div>
       <div class="footage-unit">10&#39; stations, tap &minus; / + or a preset</div>
       <div class="presets" id="presets"></div>
-      <div class="station-count" id="stationCount"></div>
     </div>
+
+    <div class="stations-panel">
+      <div class="stations-head">
+        <span class="legend-inline">Depth readings</span>
+        <span class="stations-fill" id="stationsFillCount">0 / 0 filled</span>
+      </div>
+      <div class="stations-grid" id="stationsGrid"></div>
+    </div>
+
     <button class="btn btn-primary" id="startLogBtn" type="button">Continue &rarr;</button>
   </section>
 
   <section class="screen" id="screen-form" hidden>
     <form id="boreForm">
+      <button type="button" class="borelog-back-link" id="backToDepthsBtn">&larr; Back to depth readings</button>
       <div>
         <div class="eyebrow">Step 2 of 2</div>
-        <h1>Log the bore</h1>
+        <h1>Job info</h1>
       </div>
       <fieldset>
         <legend>Job info</legend>
@@ -155,13 +165,6 @@
           <div class="field"><label for="fda">FDA</label><input type="text" id="fda" placeholder="FDA"></div>
           <div class="field"><label for="mapPage">Map page</label><input type="text" id="mapPage" placeholder="Map page"></div>
         </div>
-      </fieldset>
-      <fieldset class="stations-panel">
-        <div class="stations-head">
-          <span class="legend-inline">Depth readings</span>
-          <span class="stations-fill" id="stationsFillCount">0 / 0 filled</span>
-        </div>
-        <div class="stations-grid" id="stationsGrid"></div>
       </fieldset>
       <div class="submit-bar">
         <button type="submit" class="btn btn-primary" id="submitBtn">Save Bore Log</button>
@@ -195,7 +198,7 @@
   var depths = {};
 
   var el = {};
-  ['stepsDots','footageValue','presets','stationCount','minusBtn','plusBtn','startLogBtn',
+  ['stepsDots','footageValue','presets','minusBtn','plusBtn','startLogBtn',
    'boreForm','stationsGrid','stationsFillCount','submitBtn','submitNote'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
@@ -226,15 +229,14 @@
   function setFootage(v){
     footage = Math.max(MIN_FT, Math.min(MAX_FT, v));
     el.footageValue.textContent = footage;
-    el.stationCount.textContent = stationList(footage).length + ' stations to log';
     renderPresets();
+    buildStationsGrid(); // live-update the grid as footage changes
   }
   el.minusBtn.addEventListener('click', function(){ setFootage(footage - STEP_FT); });
   el.plusBtn.addEventListener('click', function(){ setFootage(footage + STEP_FT); });
 
   function buildStationsGrid(){
     el.stationsGrid.innerHTML = '';
-    depths = {};
     var stations = stationList(footage);
     stations.forEach(function(ft){
       var cell = document.createElement('div');
@@ -249,6 +251,7 @@
       input.step = '0.1';
       input.placeholder = '—';
       input.id = 'station-' + ft;
+      if (depths[ft] !== undefined) { input.value = depths[ft]; cell.classList.add('filled'); }
       input.addEventListener('input', function(){
         var v = input.value;
         if (v === '') { delete depths[ft]; cell.classList.remove('filled'); }
@@ -266,18 +269,26 @@
   }
   function fieldVal(id){ return document.getElementById(id).value.trim(); }
 
+  function setStepDots(step){
+    el.stepsDots.querySelectorAll('.step-dot').forEach(function(d){
+      var s = parseInt(d.dataset.step, 10);
+      d.classList.toggle('active', s === step);
+      d.classList.toggle('done', s < step);
+    });
+  }
+
   el.startLogBtn.addEventListener('click', function(){
-    buildStationsGrid();
     if (!document.getElementById('datePulled').value) {
       var t = new Date();
       document.getElementById('datePulled').value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
     }
-    el.stepsDots.querySelectorAll('.step-dot').forEach(function(d){
-      var s = parseInt(d.dataset.step, 10);
-      d.classList.toggle('active', s === 2);
-      d.classList.toggle('done', s < 2);
-    });
+    setStepDots(2);
     show('screen-form');
+  });
+
+  document.getElementById('backToDepthsBtn').addEventListener('click', function(){
+    setStepDots(1);
+    show('screen-footage');
   });
 
   el.boreForm.addEventListener('submit', function(e){

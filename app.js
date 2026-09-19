@@ -2599,7 +2599,6 @@ function renderBoreLogPresets() {
 function setBoreLogFootage(v) {
     boreLogFootage = Math.max(BORE_LOG_MIN_FT, Math.min(BORE_LOG_MAX_FT, v));
     document.getElementById('boreLogFootageValue').textContent = boreLogFootage;
-    document.getElementById('boreLogStationCount').textContent = boreLogStationList(boreLogFootage).length + ' stations to log';
     renderBoreLogPresets();
     buildBoreLogStationsGrid(false);
 }
@@ -2673,9 +2672,10 @@ function openBoreLogWizard(id, data) {
     document.getElementById('boreLogListWrap').hidden = true;
     document.getElementById('boreLogWizard').hidden = false;
 
-    // New logs start on the footage step; editing an existing log (footage
-    // already known) skips straight to the form.
-    if (data) boreLogShowFormStep(); else boreLogShowFootageStep();
+    // Always start on the depth-readings step (footage + station grid),
+    // whether creating a new log or editing an existing one — job info
+    // is the second step either way.
+    boreLogShowFootageStep();
 }
 
 function boreLogShowFootageStep() {
@@ -2869,8 +2869,8 @@ function renderBoreLogPrintHtml(row) {
 <title>${esc(title)}</title>
 <style>
   @page { size: letter landscape; margin: 0.4in; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111; background: #fff; }
   .bps-topbar { height: 10px; background: #FF6B35; margin-bottom: 18px; }
   .bps-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 24px; }
   .bps-logo { background: #FF6B35; color: #fff; display: inline-flex; flex-direction: column; line-height: 0.85; padding: 8px 12px; border-radius: 6px; }
