@@ -84,6 +84,15 @@ function getActiveProfile() {
     return profiles.find(p => p.id === activeProfileId) || null;
 }
 
+// Bore logs live in their own shared workspace (the "BORE LOG" profile's
+// workspace) regardless of which staff profile is currently logged in —
+// looked up by name so it keeps working if that profile's id ever changes,
+// falling back to the active profile's own workspace if it's missing.
+function getBoreLogWorkspaceId() {
+    const p = profiles.find(pr => pr.name && pr.name.trim().toUpperCase() === 'BORE LOG');
+    return p ? p.workspaceId : getWorkspaceId();
+}
+
 function isAdminProfile() {
     const p = getActiveProfile();
     return p ? Boolean(p.isAdmin) : false;
@@ -2713,7 +2722,7 @@ async function submitBoreLog(event) {
         depth: boreLogDepths[ft] === undefined ? null : boreLogDepths[ft]
     }));
     const record = {
-        workspace_id: getWorkspaceId(),
+        workspace_id: getBoreLogWorkspaceId(),
         date_pulled: val('blDatePulled') || null,
         company: val('blCompany'),
         crew: val('blCrew'),
@@ -2762,7 +2771,7 @@ async function fetchBoreLogs() {
         const { data, error } = await supabaseClient
             .from('bore_logs')
             .select('*')
-            .eq('workspace_id', getWorkspaceId())
+            .eq('workspace_id', getBoreLogWorkspaceId())
             .order('created_at', { ascending: false })
             .limit(200);
         if (error) throw error;
@@ -2950,7 +2959,10 @@ function printBoreLog(row) {
 }
 
 function copyBoreLogLink() {
-    const url = location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/bore-log.html?ws=' + encodeURIComponent(getWorkspaceId());
+    // No ?ws= param needed — bore-log.html resolves the shared "BORE LOG"
+    // workspace itself, so the same plain link always points there no
+    // matter which staff profile generated it.
+    const url = location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/bore-log.html';
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(() => {
             alert('Worker link copied:\n' + url);

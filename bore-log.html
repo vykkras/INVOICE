@@ -185,9 +185,18 @@
 (function(){
   var SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
-  var WORKSPACE_ID = new URLSearchParams(location.search).get('ws') || 'default';
 
   var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  // Bore logs always live in the shared "BORE LOG" profile's workspace,
+  // not whichever staff profile happened to generate this link — resolved
+  // by name from the profiles table (falls back to 'default' if missing).
+  var WORKSPACE_ID = 'default';
+  if (supabaseClient) {
+    supabaseClient.from('profiles').select('workspace_id').eq('name', 'BORE LOG').maybeSingle().then(function(res){
+      if (res && res.data && res.data.workspace_id) WORKSPACE_ID = res.data.workspace_id;
+    }).catch(function(){ /* keep the 'default' fallback */ });
+  }
 
   var MIN_FT = 10, MAX_FT = 2000, STEP_FT = 10, DEFAULT_FT = 300;
   var PRESETS = [100,200,300,400,500,600];
