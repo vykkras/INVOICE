@@ -2633,6 +2633,7 @@ function buildBoreLogStationsGrid(reset) {
         input.inputMode = 'decimal';
         input.step = '0.1';
         input.placeholder = '—';
+        input.required = true;
         if (boreLogDepths[ft] !== undefined) { input.value = boreLogDepths[ft]; cell.classList.add('filled'); }
         input.oninput = () => {
             const v = input.value;
@@ -2692,6 +2693,7 @@ function boreLogShowFormStep() {
 }
 
 function boreLogContinueToForm() {
+    if (!document.getElementById('boreLogStationsForm').reportValidity()) return;
     boreLogShowFormStep();
 }
 

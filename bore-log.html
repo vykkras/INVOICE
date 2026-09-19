@@ -137,7 +137,7 @@
     </div>
 
     <div class="stations-panel">
-      <div class="stations-grid" id="stationsGrid"></div>
+      <form id="stationsForm"><div class="stations-grid" id="stationsGrid"></div></form>
     </div>
 
     <button class="btn btn-primary" id="startLogBtn" type="button">Continue &rarr;</button>
@@ -257,6 +257,7 @@
       input.step = '0.1';
       input.placeholder = '—';
       input.id = 'station-' + ft;
+      input.required = true;
       if (depths[ft] !== undefined) { input.value = depths[ft]; cell.classList.add('filled'); }
       input.addEventListener('input', function(){
         var v = input.value;
@@ -279,6 +280,7 @@
   }
 
   el.startLogBtn.addEventListener('click', function(){
+    if (!document.getElementById('stationsForm').reportValidity()) return;
     if (!document.getElementById('datePulled').value) {
       var t = new Date();
       document.getElementById('datePulled').value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
