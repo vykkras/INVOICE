@@ -2853,37 +2853,89 @@ async function deleteBoreLog(id, btn) {
     }
 }
 
+function renderBoreLogPrintHtml(row) {
+    const esc = escapeHtml;
+    const stationsHtml = (row.stations || []).map(s => {
+        const val = (s.depth === null || s.depth === undefined) ? '' : s.depth;
+        return `<div class="bps-cell"><div class="bps-cell-val">${esc(val)}</div><div class="bps-cell-lbl">${s.station}'</div></div>`;
+    }).join('');
+
+    const title = 'HDD Bore Log' + (row.company ? ' — ' + row.company : '');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${esc(title)}</title>
+<style>
+  @page { size: letter landscape; margin: 0.4in; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111; }
+  .bps-topbar { height: 10px; background: #FF6B35; margin-bottom: 18px; }
+  .bps-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 24px; }
+  .bps-logo { background: #FF6B35; color: #fff; display: inline-flex; flex-direction: column; line-height: 0.85; padding: 8px 12px; border-radius: 6px; }
+  .bps-logo b { font-size: 20px; font-weight: 700; }
+  .bps-logo span { font-size: 10px; letter-spacing: 1.2px; }
+  .bps-title { font-size: 30px; font-weight: 700; border-bottom: 3px solid #FF6B35; padding-bottom: 4px; margin-top: 4px; }
+  .bps-meta { text-align: right; font-size: 12px; }
+  .bps-meta div { margin-bottom: 4px; }
+  .bps-meta b { text-transform: uppercase; letter-spacing: 1px; margin-right: 6px; }
+  .bps-section-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; padding: 18px 24px 6px; }
+  .bps-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 6px; padding: 0 24px; }
+  .bps-cell { display: flex; flex-direction: column; border: 1px solid #999; border-radius: 3px; overflow: hidden; break-inside: avoid; }
+  .bps-cell-val { background: #ffd9c2; text-align: center; font-size: 12px; padding: 6px 0; min-height: 18px; }
+  .bps-cell-lbl { text-align: center; font-size: 10px; padding: 2px 0; color: #333; }
+  .bps-footer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 28px; padding: 26px 24px 0; }
+  .bps-footer-item { font-size: 12px; }
+  .bps-footer-item b { display: block; text-transform: uppercase; letter-spacing: 1px; font-size: 10.5px; color: #555; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+  <div class="bps-topbar"></div>
+  <div class="bps-header">
+    <div>
+      <div class="bps-logo"><b>DC CABLE</b><span>AUTHORIZED CONTRACTOR</span></div>
+      <div class="bps-title">HDD BORE LOG</div>
+    </div>
+    <div class="bps-meta">
+      <div><b>Date pulled</b><span>${esc(formatBoreLogDate(row.date_pulled))}</span></div>
+      <div><b>Company</b><span>${esc(row.company || '—')}</span></div>
+    </div>
+  </div>
+  <div class="bps-section-label">Depth reading at each 10-foot station</div>
+  <div class="bps-grid">${stationsHtml}</div>
+  <div class="bps-footer">
+    <div class="bps-footer-item"><b>Crew</b><span>${esc(row.crew || '—')}</span></div>
+    <div class="bps-footer-item"><b>City</b><span>${esc(row.city || '—')}</span></div>
+    <div class="bps-footer-item"><b>Span ID</b><span>${esc(row.span_id || '—')}</span></div>
+    <div class="bps-footer-item"><b>Foreman</b><span>${esc(row.foreman || '—')}</span></div>
+    <div class="bps-footer-item"><b>FDA</b><span>${esc(row.fda || '—')}</span></div>
+    <div class="bps-footer-item"><b>Map page</b><span>${esc(row.map_page || '—')}</span></div>
+    <div class="bps-footer-item"><b>Footage</b><span>${esc((row.footage || 0) + ' ft')}</span></div>
+  </div>
+</body>
+</html>`;
+}
+
 function printBoreLog(row) {
-    document.getElementById('bpsDate').textContent = formatBoreLogDate(row.date_pulled);
-    document.getElementById('bpsCompany').textContent = row.company || '—';
-    document.getElementById('bpsCrew').textContent = row.crew || '—';
-    document.getElementById('bpsCity').textContent = row.city || '—';
-    document.getElementById('bpsSpanId').textContent = row.span_id || '—';
-    document.getElementById('bpsForeman').textContent = row.foreman || '—';
-    document.getElementById('bpsFda').textContent = row.fda || '—';
-    document.getElementById('bpsMapPage').textContent = row.map_page || '—';
-    document.getElementById('bpsFootage').textContent = (row.footage || 0) + ' ft';
-
-    const grid = document.getElementById('bpsGrid');
-    grid.innerHTML = '';
-    (row.stations || []).forEach(s => {
-        const cell = document.createElement('div');
-        cell.className = 'bps-cell';
-        const val = document.createElement('div');
-        val.className = 'bps-cell-val';
-        val.textContent = (s.depth === null || s.depth === undefined) ? '' : s.depth;
-        const lbl = document.createElement('div');
-        lbl.className = 'bps-cell-lbl';
-        lbl.textContent = s.station + "'";
-        cell.appendChild(val); cell.appendChild(lbl);
-        grid.appendChild(cell);
-    });
-
-    document.body.classList.add('printing-borelog');
-    setTimeout(() => {
-        window.print();
-        document.body.classList.remove('printing-borelog');
-    }, 60);
+    const html = renderBoreLogPrintHtml(row);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    if (!win) { iframe.remove(); return; }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+    setTimeout(() => iframe.remove(), 500);
 }
 
 function copyBoreLogLink() {

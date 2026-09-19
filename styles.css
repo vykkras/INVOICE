@@ -2591,45 +2591,6 @@ select:focus {
     .borelog-field-grid { grid-template-columns: 1fr; }
 }
 
-/* Bore log print sheet: hidden on screen, shown only via window.print() */
-#boreLogPrintSheet { display: none; }
-
-@media print {
-    body.printing-borelog * {
-        visibility: hidden !important;
-    }
-    body.printing-borelog #boreLogPrintSheet,
-    body.printing-borelog #boreLogPrintSheet * {
-        visibility: visible !important;
-    }
-    body.printing-borelog #boreLogPrintSheet {
-        display: block !important;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        color: #111;
-        background: #fff;
-    }
-    @page {
-        size: letter landscape;
-        margin: 0.4in;
-    }
-    .bps-topbar { height: 10px; background: #FF6B35; margin-bottom: 18px; }
-    .bps-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 24px; }
-    .bps-logo { background: #FF6B35; color: #fff; display: inline-flex; flex-direction: column; line-height: 0.85; padding: 8px 12px; border-radius: 6px; }
-    .bps-logo b { font-size: 20px; font-weight: 700; }
-    .bps-logo span { font-size: 10px; letter-spacing: 1.2px; }
-    .bps-title { font-size: 30px; font-weight: 700; border-bottom: 3px solid #FF6B35; padding-bottom: 4px; margin-top: 4px; }
-    .bps-meta { text-align: right; font-size: 12px; }
-    .bps-meta div { margin-bottom: 4px; }
-    .bps-meta b { text-transform: uppercase; letter-spacing: 1px; margin-right: 6px; }
-    .bps-section-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; padding: 18px 24px 6px; }
-    .bps-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 6px; padding: 0 24px; }
-    .bps-cell { display: flex; flex-direction: column; border: 1px solid #999; border-radius: 3px; overflow: hidden; }
-    .bps-cell-val { background: #ffd9c2; text-align: center; font-size: 12px; padding: 6px 0; min-height: 18px; }
-    .bps-cell-lbl { text-align: center; font-size: 10px; padding: 2px 0; color: #333; }
-    .bps-footer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 28px; padding: 26px 24px 0; }
-    .bps-footer-item { font-size: 12px; }
-    .bps-footer-item b { display: block; text-transform: uppercase; letter-spacing: 1px; font-size: 10.5px; color: #555; margin-bottom: 2px; }
-}
+/* Bore log printing now goes through a dedicated iframe document
+   (see renderBoreLogPrintHtml()/printBoreLog() in app.js) with its own
+   inline styles, so no print-time overrides are needed here. */
