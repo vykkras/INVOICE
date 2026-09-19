@@ -64,6 +64,7 @@ let currentTag = localStorage.getItem('currentTag') || '';
 const BORE_LOG_MIN_FT = 10, BORE_LOG_MAX_FT = 2000, BORE_LOG_STEP_FT = 10, BORE_LOG_DEFAULT_FT = 300;
 const BORE_LOG_PRESETS = [100, 200, 300, 400, 500, 600];
 let boreLogFootage = BORE_LOG_DEFAULT_FT;
+let boreLogDepths = {};
 let boreLogEditingId = null;
 let boreLogRows = [];
 
@@ -2575,6 +2576,13 @@ async function deleteInvoiceFromSupabase(invoiceNumber) {
 
 // ── Bore Logs ────────────────────────────────────────────────────────────────
 
+function boreLogStationList(ft) {
+    const out = [];
+    const n = Math.round(ft / BORE_LOG_STEP_FT);
+    for (let i = 1; i <= n; i++) out.push(i * BORE_LOG_STEP_FT);
+    return out;
+}
+
 function renderBoreLogPresets() {
     const wrap = document.getElementById('boreLogPresets');
     wrap.innerHTML = '';
@@ -2592,17 +2600,51 @@ function setBoreLogFootage(v) {
     boreLogFootage = Math.max(BORE_LOG_MIN_FT, Math.min(BORE_LOG_MAX_FT, v));
     document.getElementById('boreLogFootageValue').textContent = boreLogFootage;
     renderBoreLogPresets();
+    buildBoreLogStationsGrid(false);
 }
 
 function adjustBoreLogFootage(delta) {
     setBoreLogFootage(boreLogFootage + delta);
 }
 
+function buildBoreLogStationsGrid(reset) {
+    const grid = document.getElementById('boreLogStationsGrid');
+    grid.innerHTML = '';
+    if (reset) boreLogDepths = {};
+    const stations = boreLogStationList(boreLogFootage);
+    stations.forEach(ft => {
+        const cell = document.createElement('div');
+        cell.className = 'borelog-station-cell';
+        const label = document.createElement('div');
+        label.className = 'borelog-station-label';
+        label.textContent = ft + "'";
+        const input = document.createElement('input');
+        input.className = 'borelog-station-input';
+        input.type = 'number';
+        input.inputMode = 'decimal';
+        input.step = '0.1';
+        input.placeholder = '—';
+        if (boreLogDepths[ft] !== undefined) { input.value = boreLogDepths[ft]; cell.classList.add('filled'); }
+        input.oninput = () => {
+            const v = input.value;
+            if (v === '') { delete boreLogDepths[ft]; cell.classList.remove('filled'); }
+            else { boreLogDepths[ft] = parseFloat(v); cell.classList.add('filled'); }
+        };
+        cell.appendChild(label);
+        cell.appendChild(input);
+        grid.appendChild(cell);
+    });
+}
+
 function openBoreLogWizard(id, data) {
     boreLogEditingId = id || null;
+    boreLogDepths = {};
     document.getElementById('boreLogForm').reset();
 
     if (data) {
+        (data.stations || []).forEach(s => {
+            if (s.depth !== null && s.depth !== undefined) boreLogDepths[s.station] = s.depth;
+        });
         setBoreLogFootage(data.footage || BORE_LOG_DEFAULT_FT);
         document.getElementById('blDatePulled').value = data.date_pulled || '';
         document.getElementById('blCompany').value = data.company || '';
@@ -2617,12 +2659,16 @@ function openBoreLogWizard(id, data) {
         const t = new Date();
         document.getElementById('blDatePulled').value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
     }
+    // setBoreLogFootage() above already builds the stations grid from the
+    // current boreLogDepths (populated from `data` just above, or left
+    // empty for a brand-new log) — no separate build needed here.
 
     document.getElementById('boreLogListWrap').hidden = true;
     document.getElementById('boreLogWizard').hidden = false;
 
-    // Always start on the footage step, whether creating a new log or
-    // editing an existing one — job info is the second step either way.
+    // Always start on the depth-readings step (footage + station grid),
+    // whether creating a new log or editing an existing one — job info
+    // is the second step either way.
     boreLogShowFootageStep();
 }
 
@@ -2662,6 +2708,10 @@ async function submitBoreLog(event) {
     }
 
     const val = id => document.getElementById(id).value.trim();
+    const stations = boreLogStationList(boreLogFootage).map(ft => ({
+        station: ft,
+        depth: boreLogDepths[ft] === undefined ? null : boreLogDepths[ft]
+    }));
     const record = {
         workspace_id: getWorkspaceId(),
         date_pulled: val('blDatePulled') || null,
@@ -2673,7 +2723,7 @@ async function submitBoreLog(event) {
         fda: val('blFda'),
         map_page: val('blMapPage'),
         footage: boreLogFootage,
-        stations: [],
+        stations,
         updated_at: new Date().toISOString()
     };
 
