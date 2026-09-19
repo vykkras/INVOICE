@@ -11,6 +11,7 @@
         <div class="header">
             <button class="profile-indicator" id="profileIndicator" onclick="showProfilePicker()"></button>
         <button class="btn btn-home header-home-btn" onclick="goHome()">Dashboard</button>
+        <button class="btn btn-home header-home-btn" onclick="showBoreLogs()">Bore Logs</button>
         <div class="logo-section">
                 <div class="logo">
                     <span class="dc" id="logoLine1">DC</span><br>
@@ -183,6 +184,89 @@
                     <textarea id="invoiceNotes" placeholder="Notes..."></textarea>
                 </div>
             </div>
+        </div>
+
+        <!-- Bore Logs -->
+        <div class="borelog-view" id="boreLogsView" style="display:none">
+            <div class="borelog-list-wrap" id="boreLogListWrap">
+                <div class="dashboard-topbar">
+                    <div>
+                        <div class="dashboard-greeting">Bore Logs</div>
+                        <div class="dashboard-summary" id="boreLogSummary"></div>
+                    </div>
+                    <div class="home-actions">
+                        <button class="btn btn-new" type="button" onclick="openBoreLogWizard()">+ New Bore Log</button>
+                        <button class="btn btn-save" type="button" onclick="copyBoreLogLink()">🔗 Copy Worker Link</button>
+                    </div>
+                </div>
+                <div class="borelog-hint">Share the worker link from anywhere — it opens straight to the fill-out form with no access to this list. Submissions land here as soon as they're saved.</div>
+                <div class="borelog-list" id="boreLogList"></div>
+            </div>
+
+            <div class="borelog-wizard" id="boreLogWizard" hidden>
+                <button class="btn btn-folder" type="button" onclick="closeBoreLogWizard()">⬅ Back to Bore Logs</button>
+
+                <div class="borelog-step" id="boreLogStepFootage">
+                    <div class="borelog-step-title">Total footage</div>
+                    <p class="borelog-step-sub">Sets how many 10' stations to log.</p>
+                    <div class="borelog-footage-dial">
+                        <button class="borelog-dial-btn" type="button" onclick="adjustBoreLogFootage(-10)">−</button>
+                        <div class="borelog-footage-readout"><span id="boreLogFootageValue">300</span><small>ft</small></div>
+                        <button class="borelog-dial-btn" type="button" onclick="adjustBoreLogFootage(10)">+</button>
+                    </div>
+                    <div class="borelog-presets" id="boreLogPresets"></div>
+                    <div class="borelog-station-count" id="boreLogStationCount"></div>
+                </div>
+
+                <form id="boreLogForm" onsubmit="return submitBoreLog(event)">
+                    <div class="field-grid borelog-field-grid">
+                        <div class="form-group"><label class="form-label">Date pulled</label><input type="date" id="blDatePulled" required></div>
+                        <div class="form-group"><label class="form-label">Company</label><input type="text" id="blCompany" placeholder="e.g. BPS" required></div>
+                        <div class="form-group"><label class="form-label">Crew</label><input type="text" id="blCrew" placeholder="Crew name" required></div>
+                        <div class="form-group"><label class="form-label">Foreman</label><input type="text" id="blForeman" placeholder="Foreman"></div>
+                        <div class="form-group"><label class="form-label">City</label><input type="text" id="blCity" placeholder="City"></div>
+                        <div class="form-group"><label class="form-label">Span ID</label><input type="text" id="blSpanId" placeholder="Span ID"></div>
+                        <div class="form-group"><label class="form-label">FDA</label><input type="text" id="blFda" placeholder="FDA"></div>
+                        <div class="form-group"><label class="form-label">Map page</label><input type="text" id="blMapPage" placeholder="Map page"></div>
+                    </div>
+
+                    <div class="borelog-stations-panel">
+                        <div class="borelog-stations-head">
+                            <span>Depth readings</span>
+                            <span class="borelog-stations-fill" id="boreLogFillCount">0 / 0 filled</span>
+                        </div>
+                        <div class="borelog-stations-grid" id="boreLogStationsGrid"></div>
+                    </div>
+
+                    <button class="btn btn-save borelog-submit-btn" type="submit" id="boreLogSubmitBtn">💾 Save Bore Log</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bore log print sheet (hidden except when printing) -->
+    <div id="boreLogPrintSheet">
+        <div class="bps-topbar"></div>
+        <div class="bps-header">
+            <div>
+                <div class="bps-logo"><b>DC CABLE</b><span>AUTHORIZED CONTRACTOR</span></div>
+                <div class="bps-title">HDD BORE LOG</div>
+            </div>
+            <div class="bps-meta">
+                <div><b>Date pulled</b><span id="bpsDate"></span></div>
+                <div><b>Company</b><span id="bpsCompany"></span></div>
+            </div>
+        </div>
+        <div class="bps-section-label">Depth reading at each 10-foot station</div>
+        <div class="bps-grid" id="bpsGrid"></div>
+        <div class="bps-footer">
+            <div class="bps-footer-item"><b>Crew</b><span id="bpsCrew"></span></div>
+            <div class="bps-footer-item"><b>City</b><span id="bpsCity"></span></div>
+            <div class="bps-footer-item"><b>Span ID</b><span id="bpsSpanId"></span></div>
+            <div class="bps-footer-item"><b>Foreman</b><span id="bpsForeman"></span></div>
+            <div class="bps-footer-item"><b>FDA</b><span id="bpsFda"></span></div>
+            <div class="bps-footer-item"><b>Map page</b><span id="bpsMapPage"></span></div>
+            <div class="bps-footer-item"><b>Footage</b><span id="bpsFootage"></span></div>
         </div>
     </div>
 

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>HDD Bore Log — DC Cable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#FBF7F3; --surface:#FFFFFF; --surface-alt:#FFF2E8;
+    --ink:#201C1A; --ink-soft:#77695D; --border:#E7DDD3;
+    --accent:#FF6B35; --accent-ink:#FFFFFF; --accent-soft:#FFD9C2; --accent-soft-ink:#8A3A12;
+    --success:#2E7D46; --success-soft:#DFF3E4;
+    --danger:#C43D3D; --danger-soft:#FBE4E4;
+    --shadow:0 1px 2px rgba(32,28,26,0.06),0 8px 20px -12px rgba(32,28,26,0.18);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Barlow Condensed',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; display:flex; flex-direction:column;
+  }
+  .app{max-width:640px;margin:0 auto;width:100%;min-height:100%;display:flex;flex-direction:column;}
+
+  .topbar{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:12px 18px; display:flex; align-items:center; gap:12px;
+  }
+  .wordmark{display:flex;flex-direction:column;line-height:0.82;background:var(--accent);color:var(--accent-ink);padding:6px 10px;border-radius:6px;flex-shrink:0;}
+  .wordmark b{font-size:15px;font-weight:700;letter-spacing:0.5px;}
+  .wordmark span{font-size:9px;letter-spacing:1.2px;opacity:0.85;margin-top:2px;}
+  .topbar-title{font-weight:600;font-size:19px;letter-spacing:0.3px;flex:1;}
+  .steps{display:flex;gap:6px;flex-shrink:0;}
+  .step-dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .2s, transform .2s;}
+  .step-dot.active{background:var(--accent);transform:scale(1.3);}
+  .step-dot.done{background:var(--accent);}
+  .back-btn{border:none;background:none;color:var(--ink-soft);font-family:inherit;font-size:16px;font-weight:600;display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px;}
+
+  .screen{flex:1;display:flex;flex-direction:column;padding:22px 18px 28px;gap:22px;}
+  .eyebrow{text-transform:uppercase;font-size:12px;letter-spacing:1.6px;color:var(--ink-soft);font-weight:600;}
+  h1{font-size:34px;line-height:0.98;margin:2px 0 0;font-weight:700;letter-spacing:0.2px;text-wrap:balance;}
+  .sub{color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.5;margin:0;}
+
+  .btn{
+    font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px;letter-spacing:0.4px;
+    border-radius:10px;border:none;padding:16px 20px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:transform .08s ease, opacity .15s ease, background .15s ease;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow);}
+  .btn-primary:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+
+  .footage-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;text-align:center;}
+  .footage-dial{display:flex;align-items:center;gap:18px;}
+  .dial-btn{
+    width:56px;height:56px;border-radius:50%;border:1.5px solid var(--border);
+    background:var(--surface);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:26px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  }
+  .dial-btn:active{transform:scale(0.94);background:var(--accent-soft);border-color:var(--accent);}
+  .footage-readout{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-weight:600;font-size:56px;min-width:170px;color:var(--ink);}
+  .footage-readout small{font-size:24px;color:var(--ink-soft);margin-left:4px;}
+  .footage-unit{color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:1px;text-transform:uppercase;}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:360px;}
+  .preset-chip{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;padding:8px 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--surface);color:var(--ink-soft);cursor:pointer;}
+  .preset-chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-soft-ink);font-weight:600;}
+  .station-count{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+
+  form{display:flex;flex-direction:column;gap:26px;}
+  fieldset{border:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+  legend{font-size:13px;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;color:var(--ink-soft);padding:0 0 8px;}
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;letter-spacing:0.6px;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
+  .field input{font-family:'IBM Plex Mono',monospace;font-size:15px;padding:12px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--ink);width:100%;}
+  .field input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+
+  .stations-panel{background:var(--surface-alt);border-radius:14px;padding:16px 14px 18px;border:1px solid var(--border);}
+  .stations-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+  .stations-head .legend-inline{font-size:13px;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;color:var(--ink-soft);}
+  .stations-fill{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+  .stations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;}
+  .station-cell{display:flex;flex-direction:column;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;overflow:hidden;}
+  .station-cell:focus-within{border-color:var(--accent);}
+  .station-cell.filled{border-color:var(--accent);}
+  .station-label{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;text-align:center;padding:5px 0;background:var(--accent-soft);color:var(--accent-soft-ink);}
+  .station-input{border:none;background:transparent;text-align:center;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:16px;color:var(--ink);padding:9px 4px;width:100%;}
+  .station-input:focus{outline:none;background:var(--accent-soft);}
+
+  .submit-bar{position:sticky;bottom:env(safe-area-inset-bottom,0px);background:linear-gradient(to top,var(--bg) 60%,rgba(0,0,0,0));padding:14px 0 4px;margin-top:6px;}
+  .submit-note{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--danger);margin:8px 0 0;}
+
+  .thankyou-stage{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;gap:8px;}
+  .success-badge{width:72px;height:72px;border-radius:50%;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:10px;}
+  .thankyou-note{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin-top:18px;}
+
+  [hidden]{display:none !important;}
+  @media (min-width:480px){.stations-grid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr));}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="wordmark"><b>DC</b><span>CABLE</span></div>
+    <div class="topbar-title">Bore Log</div>
+    <div class="steps" id="stepsDots">
+      <div class="step-dot" data-step="1"></div>
+      <div class="step-dot" data-step="2"></div>
+    </div>
+  </div>
+
+  <section class="screen" id="screen-footage">
+    <div>
+      <div class="eyebrow">Step 1 of 2</div>
+      <h1>Total footage</h1>
+      <p class="sub">Set the planned bore length. This sets how many 10&#39; stations you&#39;ll log.</p>
+    </div>
+    <div class="footage-stage">
+      <div class="footage-dial">
+        <button class="dial-btn" id="minusBtn" type="button" aria-label="Decrease footage by 10">&minus;</button>
+        <div class="footage-readout"><span id="footageValue">300</span><small>ft</small></div>
+        <button class="dial-btn" id="plusBtn" type="button" aria-label="Increase footage by 10">&plus;</button>
+      </div>
+      <div class="footage-unit">10&#39; stations, tap &minus; / + or a preset</div>
+      <div class="presets" id="presets"></div>
+      <div class="station-count" id="stationCount"></div>
+    </div>
+    <button class="btn btn-primary" id="startLogBtn" type="button">Continue &rarr;</button>
+  </section>
+
+  <section class="screen" id="screen-form" hidden>
+    <form id="boreForm">
+      <div>
+        <div class="eyebrow">Step 2 of 2</div>
+        <h1>Log the bore</h1>
+      </div>
+      <fieldset>
+        <legend>Job info</legend>
+        <div class="field-grid">
+          <div class="field"><label for="datePulled">Date pulled</label><input type="date" id="datePulled" required></div>
+          <div class="field"><label for="company">Company</label><input type="text" id="company" placeholder="e.g. BPS" required></div>
+          <div class="field"><label for="crew">Crew</label><input type="text" id="crew" placeholder="Crew name" required></div>
+          <div class="field"><label for="foreman">Foreman</label><input type="text" id="foreman" placeholder="Foreman"></div>
+          <div class="field"><label for="city">City</label><input type="text" id="city" placeholder="City"></div>
+          <div class="field"><label for="spanId">Span ID</label><input type="text" id="spanId" placeholder="Span ID"></div>
+          <div class="field"><label for="fda">FDA</label><input type="text" id="fda" placeholder="FDA"></div>
+          <div class="field"><label for="mapPage">Map page</label><input type="text" id="mapPage" placeholder="Map page"></div>
+        </div>
+      </fieldset>
+      <fieldset class="stations-panel">
+        <div class="stations-head">
+          <span class="legend-inline">Depth readings</span>
+          <span class="stations-fill" id="stationsFillCount">0 / 0 filled</span>
+        </div>
+        <div class="stations-grid" id="stationsGrid"></div>
+      </fieldset>
+      <div class="submit-bar">
+        <button type="submit" class="btn btn-primary" id="submitBtn">Save Bore Log</button>
+        <p class="submit-note" id="submitNote" hidden></p>
+      </div>
+    </form>
+  </section>
+
+  <section class="screen" id="screen-thankyou" hidden>
+    <div class="thankyou-stage">
+      <div class="success-badge">&#10003;</div>
+      <div class="eyebrow">Submitted</div>
+      <h1>Thank you</h1>
+      <p class="sub">Your bore log has been saved.</p>
+      <p class="thankyou-note">You can close this window now.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
+  var WORKSPACE_ID = new URLSearchParams(location.search).get('ws') || 'default';
+
+  var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  var MIN_FT = 10, MAX_FT = 2000, STEP_FT = 10, DEFAULT_FT = 300;
+  var PRESETS = [100,200,300,400,500,600];
+  var footage = DEFAULT_FT;
+  var depths = {};
+
+  var el = {};
+  ['stepsDots','footageValue','presets','stationCount','minusBtn','plusBtn','startLogBtn',
+   'boreForm','stationsGrid','stationsFillCount','submitBtn','submitNote'
+  ].forEach(function(id){ el[id] = document.getElementById(id); });
+
+  function show(id){
+    ['screen-footage','screen-form','screen-thankyou'].forEach(function(s){
+      document.getElementById(s).hidden = (s !== id);
+    });
+    window.scrollTo(0,0);
+  }
+
+  function stationList(ft){
+    var out = [], n = Math.round(ft / STEP_FT);
+    for (var i = 1; i <= n; i++) out.push(i * STEP_FT);
+    return out;
+  }
+
+  function renderPresets(){
+    el.presets.innerHTML = '';
+    PRESETS.forEach(function(p){
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'preset-chip' + (p === footage ? ' active' : '');
+      chip.textContent = p + "'";
+      chip.addEventListener('click', function(){ setFootage(p); });
+      el.presets.appendChild(chip);
+    });
+  }
+  function setFootage(v){
+    footage = Math.max(MIN_FT, Math.min(MAX_FT, v));
+    el.footageValue.textContent = footage;
+    el.stationCount.textContent = stationList(footage).length + ' stations to log';
+    renderPresets();
+  }
+  el.minusBtn.addEventListener('click', function(){ setFootage(footage - STEP_FT); });
+  el.plusBtn.addEventListener('click', function(){ setFootage(footage + STEP_FT); });
+
+  function buildStationsGrid(){
+    el.stationsGrid.innerHTML = '';
+    depths = {};
+    var stations = stationList(footage);
+    stations.forEach(function(ft){
+      var cell = document.createElement('div');
+      cell.className = 'station-cell';
+      var label = document.createElement('div');
+      label.className = 'station-label';
+      label.textContent = ft + "'";
+      var input = document.createElement('input');
+      input.className = 'station-input';
+      input.type = 'number';
+      input.inputMode = 'decimal';
+      input.step = '0.1';
+      input.placeholder = '—';
+      input.id = 'station-' + ft;
+      input.addEventListener('input', function(){
+        var v = input.value;
+        if (v === '') { delete depths[ft]; cell.classList.remove('filled'); }
+        else { depths[ft] = parseFloat(v); cell.classList.add('filled'); }
+        updateFillCount(stations.length);
+      });
+      cell.appendChild(label);
+      cell.appendChild(input);
+      el.stationsGrid.appendChild(cell);
+    });
+    updateFillCount(stations.length);
+  }
+  function updateFillCount(total){
+    el.stationsFillCount.textContent = Object.keys(depths).length + ' / ' + total + ' filled';
+  }
+  function fieldVal(id){ return document.getElementById(id).value.trim(); }
+
+  el.startLogBtn.addEventListener('click', function(){
+    buildStationsGrid();
+    if (!document.getElementById('datePulled').value) {
+      var t = new Date();
+      document.getElementById('datePulled').value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    }
+    el.stepsDots.querySelectorAll('.step-dot').forEach(function(d){
+      var s = parseInt(d.dataset.step, 10);
+      d.classList.toggle('active', s === 2);
+      d.classList.toggle('done', s < 2);
+    });
+    show('screen-form');
+  });
+
+  el.boreForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (!el.boreForm.reportValidity()) return;
+    el.submitNote.hidden = true;
+
+    if (!supabaseClient) {
+      el.submitNote.textContent = 'Can’t save right now — reload the page and try again.';
+      el.submitNote.hidden = false;
+      return;
+    }
+
+    var record = {
+      workspace_id: WORKSPACE_ID,
+      date_pulled: fieldVal('datePulled') || null,
+      company: fieldVal('company'),
+      crew: fieldVal('crew'),
+      foreman: fieldVal('foreman'),
+      city: fieldVal('city'),
+      span_id: fieldVal('spanId'),
+      fda: fieldVal('fda'),
+      map_page: fieldVal('mapPage'),
+      footage: footage,
+      stations: stationList(footage).map(function(ft){
+        return { station: ft, depth: (depths[ft] === undefined ? null : depths[ft]) };
+      })
+    };
+
+    el.submitBtn.disabled = true;
+    el.submitBtn.textContent = 'Saving…';
+
+    supabaseClient.from('bore_logs').insert(record).then(function(res){
+      if (res.error) throw res.error;
+      show('screen-thankyou');
+    }).catch(function(err){
+      el.submitBtn.disabled = false;
+      el.submitBtn.textContent = 'Save Bore Log';
+      el.submitNote.textContent = 'Couldn’t save. Check your connection and try again.';
+      el.submitNote.hidden = false;
+      console.warn('Bore log save failed', err);
+    });
+  });
+
+  setFootage(DEFAULT_FT);
+})();
+</script>
+</body>
+</html>

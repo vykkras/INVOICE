@@ -60,6 +60,14 @@ let crossProfileCache = null; // { [workspaceId]: { profileName, invoices, folde
 let crossProfileLoading = false;
 let currentTag = localStorage.getItem('currentTag') || '';
 
+// ── Bore Logs ────────────────────────────────────────────────────────────────
+const BORE_LOG_MIN_FT = 10, BORE_LOG_MAX_FT = 2000, BORE_LOG_STEP_FT = 10, BORE_LOG_DEFAULT_FT = 300;
+const BORE_LOG_PRESETS = [100, 200, 300, 400, 500, 600];
+let boreLogFootage = BORE_LOG_DEFAULT_FT;
+let boreLogDepths = {};
+let boreLogEditingId = null;
+let boreLogRows = [];
+
 const SUPABASE_URL = 'https://rqnmaoqzdwnuaiwrutte.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs';
 // ── Profiles ──────────────────────────────────────────────────────────────────
@@ -964,6 +972,7 @@ function showHome() {
     document.getElementById('homeView').style.display = 'block';
     document.getElementById('editorView').style.display = 'none';
     document.getElementById('savedView').style.display = 'none';
+    document.getElementById('boreLogsView').style.display = 'none';
     document.querySelector('.invoice-actions').style.display = 'none';
     renderDashboard();
 }
@@ -972,6 +981,7 @@ function showEditor() {
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('editorView').style.display = 'block';
     document.getElementById('savedView').style.display = 'none';
+    document.getElementById('boreLogsView').style.display = 'none';
     document.querySelector('.invoice-actions').style.display = 'flex';
     updateLastNumberBanner();
 }
@@ -980,7 +990,18 @@ function showSavedView() {
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('editorView').style.display = 'none';
     document.getElementById('savedView').style.display = 'block';
+    document.getElementById('boreLogsView').style.display = 'none';
     document.querySelector('.invoice-actions').style.display = 'none';
+}
+
+function showBoreLogs() {
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('editorView').style.display = 'none';
+    document.getElementById('savedView').style.display = 'none';
+    document.getElementById('boreLogsView').style.display = 'block';
+    document.querySelector('.invoice-actions').style.display = 'none';
+    closeBoreLogWizard();
+    fetchBoreLogs();
 }
 
 function addItem(itemData = null) {
@@ -2550,6 +2571,308 @@ async function deleteInvoiceFromSupabase(invoiceNumber) {
         }
     } catch (error) {
         console.warn('Supabase invoice delete failed', error);
+    }
+}
+
+// ── Bore Logs ────────────────────────────────────────────────────────────────
+
+function boreLogStationList(ft) {
+    const out = [];
+    const n = Math.round(ft / BORE_LOG_STEP_FT);
+    for (let i = 1; i <= n; i++) out.push(i * BORE_LOG_STEP_FT);
+    return out;
+}
+
+function renderBoreLogPresets() {
+    const wrap = document.getElementById('boreLogPresets');
+    wrap.innerHTML = '';
+    BORE_LOG_PRESETS.forEach(p => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'borelog-preset-chip' + (p === boreLogFootage ? ' active' : '');
+        chip.textContent = p + "'";
+        chip.onclick = () => setBoreLogFootage(p);
+        wrap.appendChild(chip);
+    });
+}
+
+function setBoreLogFootage(v) {
+    boreLogFootage = Math.max(BORE_LOG_MIN_FT, Math.min(BORE_LOG_MAX_FT, v));
+    document.getElementById('boreLogFootageValue').textContent = boreLogFootage;
+    document.getElementById('boreLogStationCount').textContent = boreLogStationList(boreLogFootage).length + ' stations to log';
+    renderBoreLogPresets();
+    buildBoreLogStationsGrid(false);
+}
+
+function adjustBoreLogFootage(delta) {
+    setBoreLogFootage(boreLogFootage + delta);
+}
+
+function buildBoreLogStationsGrid(reset) {
+    const grid = document.getElementById('boreLogStationsGrid');
+    grid.innerHTML = '';
+    if (reset) boreLogDepths = {};
+    const stations = boreLogStationList(boreLogFootage);
+    stations.forEach(ft => {
+        const cell = document.createElement('div');
+        cell.className = 'borelog-station-cell';
+        const label = document.createElement('div');
+        label.className = 'borelog-station-label';
+        label.textContent = ft + "'";
+        const input = document.createElement('input');
+        input.className = 'borelog-station-input';
+        input.type = 'number';
+        input.inputMode = 'decimal';
+        input.step = '0.1';
+        input.placeholder = '—';
+        if (boreLogDepths[ft] !== undefined) { input.value = boreLogDepths[ft]; cell.classList.add('filled'); }
+        input.oninput = () => {
+            const v = input.value;
+            if (v === '') { delete boreLogDepths[ft]; cell.classList.remove('filled'); }
+            else { boreLogDepths[ft] = parseFloat(v); cell.classList.add('filled'); }
+            updateBoreLogFillCount(stations.length);
+        };
+        cell.appendChild(label);
+        cell.appendChild(input);
+        grid.appendChild(cell);
+    });
+    updateBoreLogFillCount(stations.length);
+}
+
+function updateBoreLogFillCount(total) {
+    document.getElementById('boreLogFillCount').textContent = Object.keys(boreLogDepths).length + ' / ' + total + ' filled';
+}
+
+function openBoreLogWizard(id, data) {
+    boreLogEditingId = id || null;
+    boreLogDepths = {};
+    document.getElementById('boreLogForm').reset();
+
+    if (data) {
+        (data.stations || []).forEach(s => {
+            if (s.depth !== null && s.depth !== undefined) boreLogDepths[s.station] = s.depth;
+        });
+        setBoreLogFootage(data.footage || BORE_LOG_DEFAULT_FT);
+        document.getElementById('blDatePulled').value = data.date_pulled || '';
+        document.getElementById('blCompany').value = data.company || '';
+        document.getElementById('blCrew').value = data.crew || '';
+        document.getElementById('blForeman').value = data.foreman || '';
+        document.getElementById('blCity').value = data.city || '';
+        document.getElementById('blSpanId').value = data.span_id || '';
+        document.getElementById('blFda').value = data.fda || '';
+        document.getElementById('blMapPage').value = data.map_page || '';
+    } else {
+        setBoreLogFootage(BORE_LOG_DEFAULT_FT);
+        const t = new Date();
+        document.getElementById('blDatePulled').value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    }
+    // setBoreLogFootage() above already builds the stations grid from the
+    // current boreLogDepths (populated from `data` just above, or left
+    // empty for a brand-new log) — no separate build needed here.
+
+    document.getElementById('boreLogListWrap').hidden = true;
+    document.getElementById('boreLogWizard').hidden = false;
+}
+
+function closeBoreLogWizard() {
+    boreLogEditingId = null;
+    document.getElementById('boreLogWizard').hidden = true;
+    document.getElementById('boreLogListWrap').hidden = false;
+}
+
+async function submitBoreLog(event) {
+    event.preventDefault();
+    const form = document.getElementById('boreLogForm');
+    if (!form.reportValidity()) return false;
+
+    if (!supabaseClient) {
+        alert('Not connected to the database right now — check your connection and try again.');
+        return false;
+    }
+
+    const val = id => document.getElementById(id).value.trim();
+    const stations = boreLogStationList(boreLogFootage).map(ft => ({
+        station: ft,
+        depth: boreLogDepths[ft] === undefined ? null : boreLogDepths[ft]
+    }));
+    const record = {
+        workspace_id: getWorkspaceId(),
+        date_pulled: val('blDatePulled') || null,
+        company: val('blCompany'),
+        crew: val('blCrew'),
+        foreman: val('blForeman'),
+        city: val('blCity'),
+        span_id: val('blSpanId'),
+        fda: val('blFda'),
+        map_page: val('blMapPage'),
+        footage: boreLogFootage,
+        stations,
+        updated_at: new Date().toISOString()
+    };
+
+    const btn = document.getElementById('boreLogSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    try {
+        if (boreLogEditingId) {
+            const { error } = await supabaseClient.from('bore_logs').update(record).eq('id', boreLogEditingId);
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient.from('bore_logs').insert(record);
+            if (error) throw error;
+        }
+        closeBoreLogWizard();
+        fetchBoreLogs();
+    } catch (error) {
+        console.warn('Bore log save failed', error);
+        alert('Couldn’t save the bore log. Check your connection and try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Bore Log';
+    }
+    return false;
+}
+
+async function fetchBoreLogs() {
+    const listEl = document.getElementById('boreLogList');
+    const summaryEl = document.getElementById('boreLogSummary');
+    if (!supabaseClient) {
+        listEl.innerHTML = '<div class="borelog-empty">Not connected to the database right now.</div>';
+        return;
+    }
+    try {
+        const { data, error } = await supabaseClient
+            .from('bore_logs')
+            .select('*')
+            .eq('workspace_id', getWorkspaceId())
+            .order('created_at', { ascending: false })
+            .limit(200);
+        if (error) throw error;
+        boreLogRows = data || [];
+        summaryEl.textContent = boreLogRows.length + ' bore log' + (boreLogRows.length === 1 ? '' : 's');
+        renderBoreLogList();
+    } catch (error) {
+        console.warn('Bore log fetch failed', error);
+        listEl.innerHTML = '<div class="borelog-empty">Couldn’t load bore logs. Check your connection.</div>';
+    }
+}
+
+function renderBoreLogList() {
+    const listEl = document.getElementById('boreLogList');
+    listEl.innerHTML = '';
+    if (!boreLogRows.length) {
+        listEl.innerHTML = '<div class="borelog-empty">No bore logs yet.<br>Tap “+ New Bore Log” to add one, or share the worker link.</div>';
+        return;
+    }
+    boreLogRows.forEach(row => {
+        const filled = (row.stations || []).filter(s => s.depth !== null && s.depth !== undefined).length;
+        const total = (row.stations || []).length;
+
+        const card = document.createElement('div');
+        card.className = 'borelog-card';
+        card.innerHTML = `
+            <div class="borelog-card-top">
+                <div>
+                    <div class="borelog-card-company">${escapeHtml(row.company || 'Untitled')}</div>
+                    <div class="borelog-card-meta">${escapeHtml(row.crew || 'No crew')} · ${formatBoreLogDate(row.date_pulled)} · ${row.footage || 0} ft</div>
+                </div>
+                <span class="borelog-card-fill">${filled}/${total}</span>
+            </div>
+            <div class="borelog-card-actions">
+                <button class="btn btn-home" type="button">✎ Edit</button>
+                <button class="btn btn-home" type="button">🖨️ Print</button>
+                <button class="btn btn-home borelog-danger" type="button">🗑 Delete</button>
+            </div>`;
+        const [editBtn, printBtn, delBtn] = card.querySelectorAll('button');
+        editBtn.onclick = () => openBoreLogWizard(row.id, row);
+        printBtn.onclick = () => printBoreLog(row);
+        delBtn.onclick = () => deleteBoreLog(row.id, delBtn);
+        listEl.appendChild(card);
+    });
+}
+
+function formatBoreLogDate(iso) {
+    if (!iso) return '—';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    return parts[1] + '/' + parts[2] + '/' + parts[0];
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+}
+
+async function deleteBoreLog(id, btn) {
+    if (btn.dataset.confirm !== '1') {
+        btn.dataset.confirm = '1';
+        btn.textContent = '🗑 Tap to confirm';
+        btn.classList.add('confirm');
+        setTimeout(() => {
+            if (btn.isConnected) {
+                btn.dataset.confirm = '';
+                btn.textContent = '🗑 Delete';
+                btn.classList.remove('confirm');
+            }
+        }, 3000);
+        return;
+    }
+    if (!supabaseClient) return;
+    try {
+        const { error } = await supabaseClient.from('bore_logs').delete().eq('id', id);
+        if (error) throw error;
+        fetchBoreLogs();
+    } catch (error) {
+        console.warn('Bore log delete failed', error);
+        alert('Couldn’t delete — try again.');
+    }
+}
+
+function printBoreLog(row) {
+    document.getElementById('bpsDate').textContent = formatBoreLogDate(row.date_pulled);
+    document.getElementById('bpsCompany').textContent = row.company || '—';
+    document.getElementById('bpsCrew').textContent = row.crew || '—';
+    document.getElementById('bpsCity').textContent = row.city || '—';
+    document.getElementById('bpsSpanId').textContent = row.span_id || '—';
+    document.getElementById('bpsForeman').textContent = row.foreman || '—';
+    document.getElementById('bpsFda').textContent = row.fda || '—';
+    document.getElementById('bpsMapPage').textContent = row.map_page || '—';
+    document.getElementById('bpsFootage').textContent = (row.footage || 0) + ' ft';
+
+    const grid = document.getElementById('bpsGrid');
+    grid.innerHTML = '';
+    (row.stations || []).forEach(s => {
+        const cell = document.createElement('div');
+        cell.className = 'bps-cell';
+        const val = document.createElement('div');
+        val.className = 'bps-cell-val';
+        val.textContent = (s.depth === null || s.depth === undefined) ? '' : s.depth;
+        const lbl = document.createElement('div');
+        lbl.className = 'bps-cell-lbl';
+        lbl.textContent = s.station + "'";
+        cell.appendChild(val); cell.appendChild(lbl);
+        grid.appendChild(cell);
+    });
+
+    document.body.classList.add('printing-borelog');
+    setTimeout(() => {
+        window.print();
+        document.body.classList.remove('printing-borelog');
+    }, 60);
+}
+
+function copyBoreLogLink() {
+    const url = location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/bore-log.html?ws=' + encodeURIComponent(getWorkspaceId());
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Worker link copied:\n' + url);
+        }).catch(() => {
+            prompt('Copy this worker link:', url);
+        });
+    } else {
+        prompt('Copy this worker link:', url);
     }
 }
 
