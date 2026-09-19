@@ -2672,12 +2672,35 @@ function openBoreLogWizard(id, data) {
 
     document.getElementById('boreLogListWrap').hidden = true;
     document.getElementById('boreLogWizard').hidden = false;
+
+    // New logs start on the footage step; editing an existing log (footage
+    // already known) skips straight to the form.
+    if (data) boreLogShowFormStep(); else boreLogShowFootageStep();
+}
+
+function boreLogShowFootageStep() {
+    document.getElementById('boreLogStepFootage').hidden = false;
+    document.getElementById('boreLogForm').hidden = true;
+}
+
+function boreLogShowFormStep() {
+    document.getElementById('boreLogStepFootage').hidden = true;
+    document.getElementById('boreLogForm').hidden = false;
+}
+
+function boreLogContinueToForm() {
+    boreLogShowFormStep();
+}
+
+function boreLogBackToFootage() {
+    boreLogShowFootageStep();
 }
 
 function closeBoreLogWizard() {
     boreLogEditingId = null;
     document.getElementById('boreLogWizard').hidden = true;
     document.getElementById('boreLogListWrap').hidden = false;
+    boreLogShowFootageStep();
 }
 
 async function submitBoreLog(event) {

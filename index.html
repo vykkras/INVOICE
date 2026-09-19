@@ -216,9 +216,11 @@
                     </div>
                     <div class="borelog-presets" id="boreLogPresets"></div>
                     <div class="borelog-station-count" id="boreLogStationCount"></div>
+                    <button class="btn btn-save borelog-continue-btn" type="button" onclick="boreLogContinueToForm()">Continue →</button>
                 </div>
 
-                <form id="boreLogForm" onsubmit="return submitBoreLog(event)">
+                <form id="boreLogForm" onsubmit="return submitBoreLog(event)" hidden>
+                    <button class="borelog-change-footage" type="button" onclick="boreLogBackToFootage()">← Change footage</button>
                     <div class="field-grid borelog-field-grid">
                         <div class="form-group"><label class="form-label">Date pulled</label><input type="date" id="blDatePulled" required></div>
                         <div class="form-group"><label class="form-label">Company</label><input type="text" id="blCompany" placeholder="e.g. BPS" required></div>

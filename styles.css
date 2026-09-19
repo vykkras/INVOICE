@@ -2557,6 +2557,28 @@ select:focus {
     background: #ffd9c2;
 }
 
+.borelog-continue-btn {
+    width: 100%;
+    max-width: 260px;
+    padding: 12px;
+    font-size: 15px;
+    border-radius: 10px;
+    margin-top: 6px;
+}
+
+.borelog-change-footage {
+    display: inline-block;
+    background: none;
+    border: none;
+    color: #FF6B35;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    margin: 0 0 18px;
+    text-decoration: underline;
+}
+
 .borelog-submit-btn {
     width: 100%;
     padding: 14px;
