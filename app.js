@@ -2809,12 +2809,14 @@ function renderBoreLogList() {
             </div>
             <div class="borelog-card-actions">
                 <button class="btn btn-home" type="button">✎ Edit</button>
-                <button class="btn btn-home" type="button">🖨️ Print</button>
+                <button class="btn btn-home" type="button">👁 View</button>
+                <button class="btn btn-home" type="button">⬇ Download</button>
                 <button class="btn btn-home borelog-danger" type="button">🗑 Delete</button>
             </div>`;
-        const [editBtn, printBtn, delBtn] = card.querySelectorAll('button');
+        const [editBtn, viewBtn, downloadBtn, delBtn] = card.querySelectorAll('button');
         editBtn.onclick = () => openBoreLogWizard(row.id, row);
-        printBtn.onclick = () => printBoreLog(row);
+        viewBtn.onclick = () => viewBoreLog(row);
+        downloadBtn.onclick = () => downloadBoreLogPdf(row);
         delBtn.onclick = () => deleteBoreLog(row.id, delBtn);
         listEl.appendChild(card);
     });
@@ -2939,24 +2941,159 @@ function renderBoreLogPrintHtml(row) {
 </html>`;
 }
 
-function printBoreLog(row) {
+function viewBoreLog(row) {
     const html = renderBoreLogPrintHtml(row);
-
-    // A hidden, zero-size iframe (the old approach) is reliable on desktop
-    // Chrome but frequently prints blank on mobile browsers — especially
-    // iOS Safari — since a 0x0 off-screen frame often never gets a real
-    // layout/paint pass before print() fires. Opening a real tab renders
-    // properly on both desktop and mobile.
     const win = window.open('', '_blank');
     if (!win) {
-        alert('Your browser blocked the print tab — please allow pop-ups for this site and try again.');
+        alert('Your browser blocked the new tab — please allow pop-ups for this site and try again.');
         return;
     }
-    win.onload = () => win.print();
     win.document.open();
     win.document.write(html);
     win.document.close();
     win.focus();
+}
+
+function boreLogPdfFilename(row) {
+    const company = (row.company || 'bore-log').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'bore-log';
+    const date = row.date_pulled || '';
+    return `HDD-Bore-Log-${company}${date ? '-' + date : ''}.pdf`;
+}
+
+function downloadBoreLogPdf(row) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF library didn’t load — check your connection and try again.');
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 28;
+    const orange = [255, 107, 53];
+    const peach = [255, 217, 194];
+    const ink = [17, 17, 17];
+    const gray = [85, 85, 85];
+
+    // top bar
+    doc.setFillColor(...orange);
+    doc.rect(0, 0, pageW, 8, 'F');
+
+    // logo box
+    doc.setFillColor(...orange);
+    doc.roundedRect(margin, 26, 92, 36, 4, 4, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('DC CABLE', margin + 46, 44, { align: 'center' });
+    doc.setFontSize(6.5);
+    doc.text('AUTHORIZED CONTRACTOR', margin + 46, 54, { align: 'center' });
+
+    // title
+    doc.setTextColor(...ink);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('HDD BORE LOG', margin, 84);
+    doc.setDrawColor(...orange);
+    doc.setLineWidth(2.5);
+    doc.line(margin, 90, margin + 168, 90);
+
+    // date/company, top right
+    doc.setFontSize(9);
+    doc.setTextColor(...gray);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DATE PULLED', pageW - margin - 140, 40);
+    doc.text('COMPANY', pageW - margin - 140, 54);
+    doc.setTextColor(...ink);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(formatBoreLogDate(row.date_pulled)), pageW - margin, 40, { align: 'right' });
+    doc.text(String(row.company || '—'), pageW - margin, 54, { align: 'right' });
+
+    // section label
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...gray);
+    doc.text('DEPTH READING AT EACH 10-FOOT STATION', margin, 112);
+
+    // station grid: full template (>=600ft), actual footage highlighted
+    const footage = row.footage || 0;
+    const printRange = Math.max(600, footage);
+    const depthByStation = {};
+    (row.stations || []).forEach(s => { depthByStation[s.station] = s.depth; });
+
+    const cols = 15;
+    const gap = 5;
+    const cellW = (pageW - margin * 2 - gap * (cols - 1)) / cols;
+    const cellH = 30;
+    let x = margin, y = 120, col = 0;
+
+    for (let ft = 10; ft <= printRange; ft += 10) {
+        // start of a new row that would run off the page — continue the
+        // grid on a fresh page instead of drawing past the margin
+        if (col === 0 && y + cellH > pageH - margin - 90) {
+            doc.addPage();
+            x = margin; y = margin + 10; col = 0;
+        }
+
+        const isEnd = ft === footage;
+        const d = depthByStation[ft];
+        const val = (d === null || d === undefined) ? '' : String(d);
+
+        doc.setDrawColor(isEnd ? orange[0] : 150, isEnd ? orange[1] : 150, isEnd ? orange[2] : 150);
+        doc.setLineWidth(isEnd ? 1.6 : 0.7);
+        doc.roundedRect(x, y, cellW, cellH, 2, 2, 'S');
+
+        doc.setFillColor(isEnd ? orange[0] : peach[0], isEnd ? orange[1] : peach[1], isEnd ? orange[2] : peach[2]);
+        doc.rect(x + 0.8, y + 0.8, cellW - 1.6, cellH * 0.62, 'F');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...ink);
+        doc.text(val, x + cellW / 2, y + cellH * 0.62 / 2 + 4, { align: 'center' });
+
+        // station label sits inside the filled band on the end marker,
+        // below it in gray on ordinary cells
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(isEnd ? 255 : gray[0], isEnd ? 255 : gray[1], isEnd ? 255 : gray[2]);
+        doc.text(ft + "'", x + cellW / 2, y + cellH - 6, { align: 'center' });
+
+        col++;
+        x += cellW + gap;
+        if (col === cols) { col = 0; x = margin; y += cellH + gap; }
+    }
+    if (col !== 0) y += cellH + gap;
+    // footer needs its own space too — push to a new page if the grid
+    // left no room for it
+    if (y + 100 > pageH - margin) {
+        doc.addPage();
+        y = margin + 10;
+    }
+
+    // footer fields
+    y += 20;
+    const footerCols = 3;
+    const footerColW = (pageW - margin * 2) / footerCols;
+    const fields = [
+        ['CREW', row.crew], ['CITY', row.city], ['SPAN ID', row.span_id],
+        ['FOREMAN', row.foreman], ['FDA', row.fda], ['MAP PAGE', row.map_page],
+        ['FOOTAGE', (row.footage || 0) + ' ft']
+    ];
+    fields.forEach((f, i) => {
+        const fx = margin + (i % footerCols) * footerColW;
+        const fy = y + Math.floor(i / footerCols) * 40;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...gray);
+        doc.text(f[0], fx, fy);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(...ink);
+        doc.text(String(f[1] || '—'), fx, fy + 14);
+    });
+
+    doc.save(boreLogPdfFilename(row));
 }
 
 function copyBoreLogLink() {
