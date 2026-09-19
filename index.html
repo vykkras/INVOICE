@@ -206,27 +206,20 @@
             <div class="borelog-wizard" id="boreLogWizard" hidden>
                 <button class="btn btn-folder" type="button" onclick="closeBoreLogWizard()">⬅ Back to Bore Logs</button>
 
-                <div id="boreLogStepFootage">
-                    <div class="borelog-step">
-                        <div class="borelog-step-title">Depth readings</div>
-                        <p class="borelog-step-sub">Set the total footage, then log a depth at each 10' station.</p>
-                        <div class="borelog-footage-dial">
-                            <button class="borelog-dial-btn" type="button" onclick="adjustBoreLogFootage(-10)">−</button>
-                            <div class="borelog-footage-readout"><span id="boreLogFootageValue">300</span><small>ft</small></div>
-                            <button class="borelog-dial-btn" type="button" onclick="adjustBoreLogFootage(10)">+</button>
-                        </div>
-                        <div class="borelog-presets" id="boreLogPresets"></div>
+                <div class="borelog-step" id="boreLogStepFootage">
+                    <div class="borelog-step-title">Total footage</div>
+                    <p class="borelog-step-sub">Set the total length of the bore.</p>
+                    <div class="borelog-footage-dial">
+                        <button class="borelog-dial-btn" type="button" onclick="adjustBoreLogFootage(-10)">−</button>
+                        <div class="borelog-footage-readout"><span id="boreLogFootageValue">300</span><small>ft</small></div>
+                        <button class="borelog-dial-btn" type="button" onclick="adjustBoreLogFootage(10)">+</button>
                     </div>
-
-                    <div class="borelog-stations-panel">
-                        <div class="borelog-stations-grid" id="boreLogStationsGrid"></div>
-                    </div>
-
+                    <div class="borelog-presets" id="boreLogPresets"></div>
                     <button class="btn btn-save borelog-continue-btn" type="button" onclick="boreLogContinueToForm()">Continue →</button>
                 </div>
 
                 <form id="boreLogForm" onsubmit="return submitBoreLog(event)" hidden>
-                    <button class="borelog-change-footage" type="button" onclick="boreLogBackToFootage()">← Back to depth readings</button>
+                    <button class="borelog-change-footage" type="button" onclick="boreLogBackToFootage()">← Back to footage</button>
                     <div class="field-grid borelog-field-grid">
                         <div class="form-group"><label class="form-label">Date pulled</label><input type="date" id="blDatePulled" required></div>
                         <div class="form-group"><label class="form-label">Company</label><input type="text" id="blCompany" placeholder="e.g. BPS" required></div>

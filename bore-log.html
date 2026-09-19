@@ -85,15 +85,6 @@
   .field input{font-family:'IBM Plex Mono',monospace;font-size:15px;padding:12px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--ink);width:100%;}
   .field input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
 
-  .stations-panel{background:var(--surface-alt);border-radius:14px;padding:16px 14px 18px;border:1px solid var(--border);}
-  .stations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;}
-  .station-cell{display:flex;flex-direction:column;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;overflow:hidden;}
-  .station-cell:focus-within{border-color:var(--accent);}
-  .station-cell.filled{border-color:var(--accent);}
-  .station-label{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;text-align:center;padding:5px 0;background:var(--accent-soft);color:var(--accent-soft-ink);}
-  .station-input{border:none;background:transparent;text-align:center;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:16px;color:var(--ink);padding:9px 4px;width:100%;}
-  .station-input:focus{outline:none;background:var(--accent-soft);}
-
   .submit-bar{position:sticky;bottom:env(safe-area-inset-bottom,0px);background:linear-gradient(to top,var(--bg) 60%,rgba(0,0,0,0));padding:14px 0 4px;margin-top:6px;}
   .submit-note{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--danger);margin:8px 0 0;}
 
@@ -102,7 +93,6 @@
   .thankyou-note{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin-top:18px;}
 
   [hidden]{display:none !important;}
-  @media (min-width:480px){.stations-grid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr));}}
 </style>
 </head>
 <body>
@@ -119,8 +109,8 @@
   <section class="screen" id="screen-footage">
     <div>
       <div class="eyebrow">Step 1 of 2</div>
-      <h1>Depth readings</h1>
-      <p class="sub">Set the total footage, then log a depth at each 10&#39; station.</p>
+      <h1>Total footage</h1>
+      <p class="sub">Set the total length of the bore.</p>
     </div>
     <div class="footage-stage">
       <div class="footage-dial">
@@ -132,16 +122,12 @@
       <div class="presets" id="presets"></div>
     </div>
 
-    <div class="stations-panel">
-      <div class="stations-grid" id="stationsGrid"></div>
-    </div>
-
     <button class="btn btn-primary" id="startLogBtn" type="button">Continue &rarr;</button>
   </section>
 
   <section class="screen" id="screen-form" hidden>
     <form id="boreForm">
-      <button type="button" class="borelog-back-link" id="backToDepthsBtn">&larr; Back to depth readings</button>
+      <button type="button" class="borelog-back-link" id="backToDepthsBtn">&larr; Back to footage</button>
       <div>
         <div class="eyebrow">Step 2 of 2</div>
         <h1>Job info</h1>
@@ -188,11 +174,10 @@
   var MIN_FT = 10, MAX_FT = 2000, STEP_FT = 10, DEFAULT_FT = 300;
   var PRESETS = [100,200,300,400,500,600];
   var footage = DEFAULT_FT;
-  var depths = {};
 
   var el = {};
   ['stepsDots','footageValue','presets','minusBtn','plusBtn','startLogBtn',
-   'boreForm','stationsGrid','submitBtn','submitNote'
+   'boreForm','submitBtn','submitNote'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
   function show(id){
@@ -200,12 +185,6 @@
       document.getElementById(s).hidden = (s !== id);
     });
     window.scrollTo(0,0);
-  }
-
-  function stationList(ft){
-    var out = [], n = Math.round(ft / STEP_FT);
-    for (var i = 1; i <= n; i++) out.push(i * STEP_FT);
-    return out;
   }
 
   function renderPresets(){
@@ -223,38 +202,10 @@
     footage = Math.max(MIN_FT, Math.min(MAX_FT, v));
     el.footageValue.textContent = footage;
     renderPresets();
-    buildStationsGrid(); // live-update the grid as footage changes
   }
   el.minusBtn.addEventListener('click', function(){ setFootage(footage - STEP_FT); });
   el.plusBtn.addEventListener('click', function(){ setFootage(footage + STEP_FT); });
 
-  function buildStationsGrid(){
-    el.stationsGrid.innerHTML = '';
-    var stations = stationList(footage);
-    stations.forEach(function(ft){
-      var cell = document.createElement('div');
-      cell.className = 'station-cell';
-      var label = document.createElement('div');
-      label.className = 'station-label';
-      label.textContent = ft + "'";
-      var input = document.createElement('input');
-      input.className = 'station-input';
-      input.type = 'number';
-      input.inputMode = 'decimal';
-      input.step = '0.1';
-      input.placeholder = '—';
-      input.id = 'station-' + ft;
-      if (depths[ft] !== undefined) { input.value = depths[ft]; cell.classList.add('filled'); }
-      input.addEventListener('input', function(){
-        var v = input.value;
-        if (v === '') { delete depths[ft]; cell.classList.remove('filled'); }
-        else { depths[ft] = parseFloat(v); cell.classList.add('filled'); }
-      });
-      cell.appendChild(label);
-      cell.appendChild(input);
-      el.stationsGrid.appendChild(cell);
-    });
-  }
   function fieldVal(id){ return document.getElementById(id).value.trim(); }
 
   function setStepDots(step){
@@ -301,9 +252,7 @@
       fda: fieldVal('fda'),
       map_page: fieldVal('mapPage'),
       footage: footage,
-      stations: stationList(footage).map(function(ft){
-        return { station: ft, depth: (depths[ft] === undefined ? null : depths[ft]) };
-      })
+      stations: []
     };
 
     el.submitBtn.disabled = true;
