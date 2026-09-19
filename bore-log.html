@@ -80,7 +80,7 @@
   fieldset{border:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
   legend{font-size:13px;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;color:var(--ink-soft);padding:0 0 8px;}
   .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .field{display:flex;flex-direction:column;gap:5px;}
+  .field{display:flex;flex-direction:column;gap:5px;min-width:0;}
   .field label{font-size:12px;letter-spacing:0.6px;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
   .field input{font-family:'IBM Plex Mono',monospace;font-size:15px;padding:12px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--ink);width:100%;}
   .field input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
@@ -93,6 +93,10 @@
   .thankyou-note{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin-top:18px;}
 
   [hidden]{display:none !important;}
+
+  @media (max-width:420px){
+    .field-grid{grid-template-columns:1fr;}
+  }
 </style>
 </head>
 <body>

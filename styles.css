@@ -2471,6 +2471,10 @@ select:focus {
     margin-bottom: 22px;
 }
 
+.borelog-field-grid .form-group {
+    min-width: 0;
+}
+
 .borelog-field-grid input {
     width: 100%;
     padding: 10px 12px;
