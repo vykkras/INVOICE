@@ -87,6 +87,18 @@
             </div>
         </div>
 
+        <div class="template-name-dialog" id="profilePasswordDialog">
+            <div class="template-name-content">
+                <div class="template-name-title">Enter password</div>
+                <input type="password" id="profilePasswordInput" placeholder="Password" autocomplete="off" onkeydown="if(event.key==='Enter')confirmProfilePassword();if(event.key==='Escape')cancelProfilePassword();">
+                <div class="password-gate-error" id="profilePasswordError" style="display:none">Incorrect password.</div>
+                <div class="template-name-actions">
+                    <button type="button" class="btn btn-save" onclick="confirmProfilePassword()">Continue</button>
+                    <button type="button" onclick="cancelProfilePassword()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div class="move-dialog" id="moveDialog">
             <div class="move-dialog-content">
                 <div class="move-dialog-header">

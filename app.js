@@ -147,6 +147,42 @@ function getInitials(name) {
     return name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('');
 }
 
+// ── Shared profile password gate ────────────────────────────────────────
+// One hardcoded password protects entering/creating any profile, and
+// opening Admin Functions (which can also jump straight into a profile).
+const PROFILE_PASSWORD = 'cablerocks123';
+let pendingPasswordAction = null;
+
+function requireProfilePassword(action) {
+    pendingPasswordAction = action;
+    const input = document.getElementById('profilePasswordInput');
+    const err = document.getElementById('profilePasswordError');
+    if (input) input.value = '';
+    if (err) err.style.display = 'none';
+    document.getElementById('profilePasswordDialog').style.display = 'flex';
+    setTimeout(() => input && input.focus(), 50);
+}
+
+function confirmProfilePassword() {
+    const input = document.getElementById('profilePasswordInput');
+    const err = document.getElementById('profilePasswordError');
+    const value = input ? input.value : '';
+    if (value === PROFILE_PASSWORD) {
+        document.getElementById('profilePasswordDialog').style.display = 'none';
+        const action = pendingPasswordAction;
+        pendingPasswordAction = null;
+        if (action) action();
+    } else {
+        if (err) err.style.display = 'block';
+        if (input) { input.value = ''; input.focus(); }
+    }
+}
+
+function cancelProfilePassword() {
+    pendingPasswordAction = null;
+    document.getElementById('profilePasswordDialog').style.display = 'none';
+}
+
 function selectProfile(profileId) {
     activeProfileId = profileId;
     localStorage.setItem('activeProfileId', profileId);
@@ -200,7 +236,7 @@ function renderProfilePickerUI() {
             wrap.className = 'profile-card-wrap';
             const btn = document.createElement('button');
             btn.className = 'profile-card';
-            btn.onclick = () => selectProfile(profile.id);
+            btn.onclick = () => requireProfilePassword(() => selectProfile(profile.id));
             const avatar = document.createElement('div');
             avatar.className = 'profile-card-avatar';
             avatar.textContent = getInitials(profile.name);
@@ -231,8 +267,10 @@ function renderProfilePickerUI() {
         addBtn.className = 'profile-add-btn';
         addBtn.textContent = '+ New Profile';
         addBtn.onclick = () => {
-            createSection.style.display = 'flex';
-            setTimeout(() => document.getElementById('newProfileName')?.focus(), 50);
+            requireProfilePassword(() => {
+                createSection.style.display = 'flex';
+                setTimeout(() => document.getElementById('newProfileName')?.focus(), 50);
+            });
         };
         list.appendChild(addBtn);
     } else {
@@ -267,8 +305,10 @@ async function deleteProfile(profileId) {
     renderProfilePickerUI();
 }
 function showAdminPanel() {
-    renderAdminPanel();
-    document.getElementById('adminPanelOverlay').style.display = 'flex';
+    requireProfilePassword(() => {
+        renderAdminPanel();
+        document.getElementById('adminPanelOverlay').style.display = 'flex';
+    });
 }
 
 function closeAdminPanel() {
