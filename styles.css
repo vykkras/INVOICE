@@ -1930,7 +1930,8 @@ select:focus {
     .invoice-tag-badge,
     .last-number-banner,
     .billing-entity-toggle,
-    .doc-type-toggle {
+    .doc-type-toggle,
+    .profile-indicator {
         display: none !important;
     }
 
