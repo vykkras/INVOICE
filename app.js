@@ -311,6 +311,16 @@ function showAdminPanel() {
     });
 }
 
+// Bore Logs is the one exception to the profile password gate — a crew
+// lead should be able to jump straight into it from the picker screen
+// with no password and no profile selected. getBoreLogWorkspaceId()
+// resolves the shared "BORE LOG" workspace by profile name regardless
+// of activeProfileId, so this works fine with no profile active at all.
+function enterBoreLogsDirect() {
+    document.getElementById('profilePicker').style.display = 'none';
+    showBoreLogs();
+}
+
 function closeAdminPanel() {
     document.getElementById('adminPanelOverlay').style.display = 'none';
 }
