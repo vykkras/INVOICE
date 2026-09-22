@@ -429,6 +429,19 @@ body {
     letter-spacing: 1px;
 }
 
+/* New DC Cable logo image is its own complete artwork — no orange box
+   or padding behind it, just the image sized to fit the header. */
+.logo.logo-image-mode {
+    background: transparent;
+    padding: 0;
+}
+
+.logo-image {
+    display: block;
+    height: 48px;
+    width: auto;
+}
+
 .invoice-banner {
     height: 4px;
     background: #FF6B35;
@@ -2238,6 +2251,10 @@ select:focus {
     .logo {
         font-size: 16px;
         padding: 5px 10px;
+    }
+
+    .logo-image {
+        height: 36px;
     }
 
     .invoice-title {

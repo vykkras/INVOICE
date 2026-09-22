@@ -614,6 +614,22 @@ function startBlankInvoice() {
 
 function renderBillingLogo(entity) {
     const cfg = BILLING_ENTITIES[entity] || BILLING_ENTITIES['dc-cable'];
+    const logoBox = document.getElementById('logoBox');
+    const img = document.getElementById('logoImage');
+    const textWrap = document.getElementById('logoTextWrap');
+
+    if (entity === 'dc-cable') {
+        // The new DC Cable logo is its own complete artwork (no separate
+        // "Authorized Contractor" line, no orange box needed behind it).
+        if (img) img.style.display = 'block';
+        if (textWrap) textWrap.style.display = 'none';
+        if (logoBox) logoBox.classList.add('logo-image-mode');
+        return;
+    }
+
+    if (img) img.style.display = 'none';
+    if (textWrap) textWrap.style.display = 'block';
+    if (logoBox) logoBox.classList.remove('logo-image-mode');
     const l1 = document.getElementById('logoLine1');
     const l2 = document.getElementById('logoLine2');
     const tag = document.getElementById('logoTagline');
@@ -2945,10 +2961,8 @@ function renderBoreLogPrintHtml(row) {
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111; background: #fff; }
   .bps-topbar { height: 10px; background: #FF6B35; margin-bottom: 18px; }
   .bps-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 24px; }
-  .bps-logo { background: #FF6B35; color: #fff; display: inline-flex; flex-direction: column; line-height: 0.85; padding: 8px 12px; border-radius: 6px; }
-  .bps-logo b { font-size: 20px; font-weight: 700; }
-  .bps-logo span { font-size: 10px; letter-spacing: 1.2px; }
-  .bps-title { font-size: 30px; font-weight: 700; border-bottom: 3px solid #FF6B35; padding-bottom: 4px; margin-top: 4px; }
+  .bps-logo-img { height: 54px; width: auto; display: block; }
+  .bps-title { font-size: 30px; font-weight: 700; border-bottom: 3px solid #FF6B35; padding-bottom: 4px; margin-top: 8px; }
   .bps-meta { text-align: right; font-size: 12px; }
   .bps-meta div { margin-bottom: 4px; }
   .bps-meta b { text-transform: uppercase; letter-spacing: 1px; margin-right: 6px; }
@@ -2968,7 +2982,7 @@ function renderBoreLogPrintHtml(row) {
   <div class="bps-topbar"></div>
   <div class="bps-header">
     <div>
-      <div class="bps-logo"><b>DC CABLE</b><span>AUTHORIZED CONTRACTOR</span></div>
+      <img class="bps-logo-img" src="${esc(location.origin)}/assets/dc-cable-logo.jpg" alt="DC Cable LLC">
       <div class="bps-title">HDD BORE LOG</div>
     </div>
     <div class="bps-meta">
@@ -3010,11 +3024,40 @@ function boreLogPdfFilename(row) {
     return `HDD-Bore-Log-${company}${date ? '-' + date : ''}.pdf`;
 }
 
-function downloadBoreLogPdf(row) {
+let boreLogLogoDataUrlPromise = null;
+
+// Fetches the logo once and caches the resulting data URL — jsPDF's
+// addImage() needs a data URL/ImageData, not a plain URL, and repeated
+// downloads shouldn't re-fetch it every time.
+function loadBoreLogLogoDataUrl() {
+    if (boreLogLogoDataUrlPromise) return boreLogLogoDataUrlPromise;
+    boreLogLogoDataUrlPromise = fetch('assets/dc-cable-logo.jpg')
+        .then(res => res.blob())
+        .then(blob => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        }))
+        .catch(err => {
+            boreLogLogoDataUrlPromise = null; // allow retry on next call
+            throw err;
+        });
+    return boreLogLogoDataUrlPromise;
+}
+
+async function downloadBoreLogPdf(row) {
     if (!window.jspdf || !window.jspdf.jsPDF) {
         alert('PDF library didn’t load — check your connection and try again.');
         return;
     }
+    let logoDataUrl = null;
+    try {
+        logoDataUrl = await loadBoreLogLogoDataUrl();
+    } catch (err) {
+        console.warn('Bore log PDF logo failed to load', err);
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
 
@@ -3030,15 +3073,14 @@ function downloadBoreLogPdf(row) {
     doc.setFillColor(...orange);
     doc.rect(0, 0, pageW, 8, 'F');
 
-    // logo box
-    doc.setFillColor(...orange);
-    doc.roundedRect(margin, 26, 92, 36, 4, 4, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('DC CABLE', margin + 46, 44, { align: 'center' });
-    doc.setFontSize(6.5);
-    doc.text('AUTHORIZED CONTRACTOR', margin + 46, 54, { align: 'center' });
+    // logo (real image; the artwork already includes "DC CABLE LLC" —
+    // falls back to nothing drawn if it failed to load rather than
+    // blocking the download)
+    const logoH = 44;
+    const logoW = logoH * (1017 / 566); // native aspect ratio
+    if (logoDataUrl) {
+        doc.addImage(logoDataUrl, 'JPEG', margin, 20, logoW, logoH);
+    }
 
     // title
     doc.setTextColor(...ink);

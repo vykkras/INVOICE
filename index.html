@@ -13,10 +13,13 @@
         <button class="btn btn-home header-home-btn" onclick="goHome()">Dashboard</button>
         <button class="btn btn-home header-home-btn" onclick="showBoreLogs()">Bore Logs</button>
         <div class="logo-section">
-                <div class="logo">
-                    <span class="dc" id="logoLine1">DC</span><br>
-                    <span class="cable" id="logoLine2">CABLE</span><br>
-                    <div class="contractor-text" id="logoTagline">AUTHORIZED CONTRACTOR</div>
+                <div class="logo logo-image-mode" id="logoBox">
+                    <img class="logo-image" id="logoImage" src="assets/dc-cable-logo.jpg" alt="DC Cable LLC">
+                    <div id="logoTextWrap" style="display:none">
+                        <span class="dc" id="logoLine1">DC</span><br>
+                        <span class="cable" id="logoLine2">CABLE</span><br>
+                        <div class="contractor-text" id="logoTagline">AUTHORIZED CONTRACTOR</div>
+                    </div>
                 </div>
             </div>
             <div class="action-buttons invoice-actions">
@@ -268,10 +271,8 @@
     <!-- Profile picker -->
     <div class="profile-picker" id="profilePicker">
         <div class="profile-picker-content">
-            <div class="logo" style="margin-bottom:24px;display:inline-block">
-                <span class="dc">DC</span><br>
-                <span class="cable">CABLE</span><br>
-                <div class="contractor-text">AUTHORIZED CONTRACTOR</div>
+            <div class="logo logo-image-mode" style="margin-bottom:24px;display:inline-block">
+                <img class="logo-image" src="assets/dc-cable-logo.jpg" alt="DC Cable LLC" style="height:72px">
             </div>
             <h2 class="profile-picker-title">Who's using the app?</h2>
             <div class="profile-list" id="profileList"></div>

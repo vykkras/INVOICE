@@ -33,9 +33,7 @@
     background:var(--surface); border-bottom:1px solid var(--border);
     padding:12px 18px; display:flex; align-items:center; gap:12px;
   }
-  .wordmark{display:flex;flex-direction:column;line-height:0.82;background:var(--accent);color:var(--accent-ink);padding:6px 10px;border-radius:6px;flex-shrink:0;}
-  .wordmark b{font-size:15px;font-weight:700;letter-spacing:0.5px;}
-  .wordmark span{font-size:9px;letter-spacing:1.2px;opacity:0.85;margin-top:2px;}
+  .wordmark-img{height:34px;width:auto;flex-shrink:0;}
   .topbar-title{font-weight:600;font-size:19px;letter-spacing:0.3px;flex:1;}
   .steps{display:flex;gap:6px;flex-shrink:0;}
   .step-dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .2s, transform .2s;}
@@ -112,7 +110,7 @@
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="wordmark"><b>DC</b><span>CABLE</span></div>
+    <img class="wordmark-img" src="assets/dc-cable-logo.jpg" alt="DC Cable LLC">
     <div class="topbar-title">Bore Log</div>
     <div class="steps" id="stepsDots">
       <div class="step-dot" data-step="1"></div>
