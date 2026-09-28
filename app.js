@@ -316,9 +316,23 @@ function showAdminPanel() {
 // with no password and no profile selected. getBoreLogWorkspaceId()
 // resolves the shared "BORE LOG" workspace by profile name regardless
 // of activeProfileId, so this works fine with no profile active at all.
+// Entering this way also locks the session into "bore logs only" mode:
+// the Dashboard, Bore Logs and profile buttons are hidden (see
+// body.borelog-only in styles.css) so a crew lead can only see bore logs.
+// The only way out is Exit, which returns to the profile picker.
 function enterBoreLogsDirect() {
+    document.body.classList.add('borelog-only');
     document.getElementById('profilePicker').style.display = 'none';
     showBoreLogs();
+}
+
+function isBoreLogOnlyMode() {
+    return document.body.classList.contains('borelog-only');
+}
+
+function exitBoreLogsOnly() {
+    document.body.classList.remove('borelog-only');
+    showProfilePicker();
 }
 
 function closeAdminPanel() {
@@ -1710,6 +1724,7 @@ function showSavedInvoices() {
 }
 
 function goHome() {
+    if (isBoreLogOnlyMode()) return;
     showHome();
 }
 

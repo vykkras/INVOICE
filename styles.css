@@ -2608,3 +2608,14 @@ select:focus {
 /* Bore log printing now goes through a dedicated iframe document
    (see renderBoreLogPrintHtml()/printBoreLog() in app.js) with its own
    inline styles, so no print-time overrides are needed here. */
+
+/* Bore-logs-only mode (entered from the picker's Bore Logs button):
+   hide every way to reach invoices, the dashboard or profiles. */
+.borelog-exit-btn { display: none; }
+body.borelog-only .borelog-exit-btn { display: inline-flex; }
+body.borelog-only #profileIndicator,
+body.borelog-only .header-home-btn,
+body.borelog-only .invoice-actions,
+body.borelog-only #adminReturnBar {
+    display: none !important;
+}
